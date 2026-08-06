@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>File & Approval Workflow · Zonexa</title>
+<link rel="stylesheet" href="assets/zcc.css">
+</head>
+<body data-app="cc" data-page="approval-workflow">
+<main class="main">
+  <section class="zcc-page-head">
+    <div>
+      <div class="zcc-eyebrow">Zonexa · Command Center</div>
+      <h1>File &amp; Approval Workflow</h1>
+      <p>Track every contract file through the full government chain — Procurement → Audit → User Dept → Engineering → Accounts → STO → CIA → Governor — and see where the bottleneck is.</p>
+    </div>
+    <span class="zcc-system-pill">FedEx-style Tracking</span>
+  </section>
+
+  <section class="section">
+    <div class="section-head"><div><h2>Approval Chain</h2><p>The standard multi-stage sign-off sequence each file follows.</p></div></div>
+    <div class="panel"><div class="flowbar" id="awChain"></div></div>
+  </section>
+
+  <section class="section">
+    <div class="section-head"><div><h2>File Journey by Project</h2><p>Where each file currently sits along the chain.</p></div></div>
+    <div class="panel" style="padding:0;overflow:hidden" id="awTable"></div>
+  </section>
+
+  <section class="section">
+    <div class="section-head"><div><h2>Spend Authority by Role</h2><p>Approval limits — controls so delegated powers are not abused. Requisitions above a role's limit escalate up the chain.</p></div><span class="pill blue">Governance</span></div>
+    <div class="panel" style="padding:0;overflow:hidden" id="awLimits"></div>
+  </section>
+</main>
+<script src="assets/zcc-data.js"></script>
+<script src="assets/zcc-app.js"></script>
+</body>
+</html>

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Bidding Pipeline · Zonexa</title>
+<link rel="stylesheet" href="assets/zcc.css">
+</head>
+<body data-app="cc" data-page="bidding">
+<main class="main">
+  <section class="zcc-page-head">
+    <div>
+      <div class="zcc-eyebrow">Zonexa · Command Center</div>
+      <h1>Bidding Pipeline</h1>
+      <p>Track the MD's core work — winning contracts. From budget mapping and bid submission through to awarded or lost.</p>
+    </div>
+    <span class="zcc-system-pill">Sales Pipeline</span>
+  </section>
+
+  <section class="metric-row" id="bidKpis" style="margin-bottom:14px"></section>
+
+  <section class="section">
+    <div class="section-head"><div><h2>Opportunities by Stage</h2><p>Pipeline → In Bidding → Won → Lost.</p></div></div>
+    <div class="pipeline-board" id="bidBoard"></div>
+  </section>
+
+  <section class="section">
+    <div class="section-head"><div><h2>Bid Register (Detailed)</h2><p>Full bid-specific detail — procurement type, bid deadline, win probability and BPP compliance.</p></div><span class="pill blue">Bid Data</span></div>
+    <div class="panel" style="padding:0;overflow:hidden" id="bidTable"></div>
+  </section>
+</main>
+<script src="assets/zcc-data.js"></script>
+<script src="assets/zcc-app.js"></script>
+</body>
+</html>

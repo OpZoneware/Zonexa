@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Staff Site Photos · Zonexa</title>
+<link rel="stylesheet" href="assets/zcc.css">
+</head>
+<body class="staff" data-app="staff" data-page="staff-photos">
+<main class="main">
+  <section class="zcc-page-head">
+    <div>
+      <div class="zcc-eyebrow">Staff Workspace · Site Photos</div>
+      <h1 style="color:var(--sw-ink)">Site Photos &amp; Evidence</h1>
+      <p style="color:var(--sw-muted)">Upload time-stamped site evidence. Each record is saved against your identity.</p>
+    </div>
+  </section>
+  <div class="card card-pad page-block">
+    <h3>Upload Site Evidence</h3>
+    <div class="upload-grid" style="align-items:stretch">
+      <div class="field"><label>Project</label><select id="photoProject"></select>
+        <div style="margin-top:8px" class="photo-upload-hint">Only projects assigned to you are listed. The upload is time-stamped and recorded against your name.</div>
+      </div>
+      <div class="photo-upload-area" onclick="document.getElementById('photoInput').click()">
+        <div class="photo-upload-icon"><svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 8.5h2.8l1.8-2h5.8l1.8 2h2.8a1 1 0 0 1 1 1V18a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1V9.5a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.2"/></svg></div>
+        <div class="photo-upload-label">Tap to upload site photo / evidence</div>
+        <div class="photo-upload-hint">JPG, PNG or PDF · recorded with date, time and your identity</div>
+        <input type="file" id="photoInput" accept="image/*,.pdf" onchange="handlePhotoUpload(this)">
+      </div>
+    </div>
+    <span class="message" id="uploadMsg"></span>
+  </div>
+  <div class="card card-pad">
+    <h3>My Uploaded Evidence</h3>
+    <div class="photo-grid" id="photoGrid"></div>
+  </div>
+</main>
+<script src="assets/zcc-data.js"></script>
+<script src="assets/zcc-app.js"></script>
+</body>
+</html>

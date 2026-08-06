@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>My Profile · Zonexa</title>
+<link rel="stylesheet" href="assets/zcc.css">
+</head>
+<body class="staff" data-app="staff" data-page="staff-profile">
+<main class="main">
+  <div class="card card-pad page-block">
+    <div style="display:flex;gap:18px;align-items:center;flex-wrap:wrap">
+      <div class="avatar" id="pfAvatar" style="width:84px;height:84px;font-size:26px;border-width:4px">--</div>
+      <div style="flex:1;min-width:220px">
+        <h3 style="margin:0" id="pfName">—</h3>
+        <div class="muted" id="pfRole">—</div>
+        <div style="margin-top:8px"><span class="status-badge">Active staff identity</span></div>
+      </div>
+      <button class="btn btn-outline" onclick="ZCC.signOut()">Sign Out</button>
+    </div>
+  </div>
+  <div class="stat-grid page-block">
+    <div class="stat assigned"><span>Assigned Tasks</span><b id="pfAssigned">0</b></div>
+    <div class="stat signed"><span>Signed Off</span><b id="pfSigned">0</b></div>
+    <div class="stat pending"><span>Outstanding</span><b id="pfPending">0</b></div>
+    <div class="stat review"><span>Portal Access</span><b>Staff</b></div>
+  </div>
+  <div class="card card-pad page-block">
+    <h3>Contact &amp; Access</h3>
+    <div class="contact-list">
+      <div class="contact"><div class="icon">@</div><div><small>Email</small><b id="pfEmail">—</b></div></div>
+      <div class="contact"><div class="icon">#</div><div><small>Role</small><b id="pfRole">—</b></div></div>
+      <div class="contact"><div class="icon">✓</div><div><small>Access Code</small><b id="pfCode">—</b></div></div>
+      <div class="contact"><div class="icon">✦</div><div><small>Portal</small><b>Staff Workspace (assigned tasks only)</b></div></div>
+    </div>
+  </div>
+  <div class="card page-block">
+    <div class="card-pad" style="padding-bottom:0"><h3 style="margin:0 0 4px">My Assignments</h3><p class="doc-table-note" style="margin:0 0 4px">Every upload task and sign-off recorded against your identity.</p></div>
+    <div class="table-wrap" style="margin-top:12px"><table class="table"><thead><tr><th>Project</th><th>Stage</th><th>Required File</th><th>Status</th></tr></thead><tbody id="pfProjects"></tbody></table></div>
+  </div>
+  <div class="login-hint">🔒 <b>Security:</b> your access code is personal. Do not share it. If you suspect it is compromised, contact Toyin Adeyemi (Contract Lead) immediately to have it changed. In production this screen is replaced by Google Workspace sign-in (USEREMAIL()).</div>
+</main>
+<script src="assets/zcc-data.js"></script>
+<script src="assets/zcc-app.js"></script>
+</body>
+</html>

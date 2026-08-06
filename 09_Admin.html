@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>System Admin · Zonexa</title>
+<link rel="stylesheet" href="assets/zcc.css">
+</head>
+<body data-app="cc" data-page="admin">
+<main class="main">
+  <section class="zcc-page-head">
+    <div>
+      <div class="zcc-eyebrow">Command Center · System Admin</div>
+      <h1>System Administration</h1>
+      <p>Configuration area for the platform — users, roles, project stages, document types and metric definitions. (Distinct from the office Admin role, which covers office management, utilities, logistics and security.)</p>
+    </div>
+    <span class="zcc-system-pill">Platform Configuration</span>
+  </section>
+  <section class="section" id="admin">
+    <div class="module-grid">
+      <div class="module-card"><h3>Users &amp; Roles</h3><p>MD, Contract Lead, PM, Site Supervisor, Accounts, Facility Manager and Super Admin permissions.</p></div>
+      <div class="module-card"><h3>Stage Definitions</h3><p>Stage 0 to Stage 6 with SLA days and responsible roles.</p></div>
+      <div class="module-card"><h3>Document Types</h3><p>Award letters, BOQs, site reports, inspections, invoices and close-out files.</p></div>
+    </div>
+    <div class="section-head" style="margin-top:22px"><div><h2>Users &amp; Roles</h2><p>Registered portal identities. Access codes are masked here and issued privately.</p></div></div>
+    <div class="panel" style="padding:0;overflow:hidden" id="adminUsers"></div>
+    <div class="section-head" style="margin-top:22px"><div><h2>Stage Definitions</h2><p>Standard project stages (Stage 0 – 6) with responsible roles. SLA days per stage are configured in the AppSheet data layer.</p></div></div>
+    <div class="panel" style="padding:0;overflow:hidden" id="adminStages"></div>
+    <div class="section-head" style="margin-top:22px"><div><h2>Document Types</h2><p>Controlled document categories currently in use across the portfolio.</p></div></div>
+    <div class="panel" style="padding:0;overflow:hidden" id="adminDocTypes"></div>
+    <div class="section-head" style="margin-top:22px"><div><h2>Metric Definitions</h2><p>Rule-based statuses — calculated, never opinion-based.</p></div></div>
+    <div class="panel">
+      <span class="admin-chip">Fresh: updated within 3 days</span>
+      <span class="admin-chip">Aging: 4–6 days old</span>
+      <span class="admin-chip">Stale: more than 6 days old</span>
+      <span class="admin-chip">Watchlist: 1–3 days overdue or beyond SLA</span>
+      <span class="admin-chip">Escalate: more than 3 days overdue or beyond SLA</span>
+    </div>
+  </section>
+</main>
+<script src="assets/zcc-data.js"></script>
+<script src="assets/zcc-app.js"></script>
+</body>
+</html>

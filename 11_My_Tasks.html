@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>My Tasks · Zonexa</title>
+<link rel="stylesheet" href="assets/zcc.css">
+</head>
+<body class="staff" data-app="staff" data-page="staff-tasks">
+<main class="main">
+  <section class="zcc-page-head">
+    <div>
+      <div class="zcc-eyebrow">Staff Workspace · My Tasks</div>
+      <h1 style="color:var(--sw-ink)">My Tasks</h1>
+      <p style="color:var(--sw-muted)">Upload required files and sign off your assigned project stages.</p>
+    </div>
+  </section>
+  <div class="card card-pad page-block">
+  <h3>Upload &amp; Sign Off</h3>
+  <div class="upload-grid">
+    <div class="field"><label>My assigned task</label><select id="taskSelect"></select></div>
+    <div class="field"><label>Choose file</label><input type="file" id="fileInput"></div>
+  </div>
+  <div class="field" style="margin-top:12px"><label>Sign-off comment</label><textarea id="comment" placeholder="Add a short note..."></textarea></div>
+  <div style="margin-top:12px"><button class="btn btn-primary" onclick="simulateUpload()">Upload &amp; Sign Off</button><span class="message" id="uploadMsg"></span></div>
+</div>
+  <div class="card">
+    <div class="tabs" style="padding:14px 16px 8px"><button class="tab active" data-tab="all">All</button><button class="tab" data-tab="pending">Pending Upload</button><button class="tab" data-tab="review">Awaiting Review</button><button class="tab" data-tab="signed">Signed Off</button></div>
+    <div class="toolbar">
+      <div class="filter-field search-field"><label>Search tasks</label><div class="input-wrap"><span class="input-icon">⌕</span><input id="search" placeholder="Search project, stage, file..."></div></div>
+      <div class="filter-field"><label>Status</label><select id="statusFilter"><option value="">All My Statuses</option></select></div>
+      <div class="filter-field"><label>Project</label><select id="projectFilter"><option value="">All My Projects</option></select></div>
+    </div>
+    <div class="table-wrap"><table class="table" id="taskTable"></table></div>
+  </div>
+</main>
+<script src="assets/zcc-data.js"></script>
+<script src="assets/zcc-app.js"></script>
+</body>
+</html>

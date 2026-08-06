@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Contract Dashboard · Zonexa</title>
+<link rel="stylesheet" href="assets/zcc.css">
+</head>
+<body data-app="contract" data-page="contract-dash">
+<main class="main">
+  <section class="zcc-page-head">
+    <div>
+      <div class="zcc-eyebrow">Zonexa · Contract Portal</div>
+      <h1>Contract Dashboard</h1>
+      <p>Government file pipeline — where each contract file is sitting and how long it has been there.</p>
+    </div>
+    <span class="zcc-system-pill">File Pipeline View</span>
+  </section>
+
+  <section class="metric-row" id="contractKpis" style="margin-bottom:14px"></section>
+
+  <section class="panel" id="closeArchivePanel" style="display:none;margin-bottom:18px">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap">
+      <div>
+        <b style="font-size:15px">Close &amp; Archive Project</b>
+        <div style="font-size:12px;color:var(--muted);margin-top:3px">When a project is fully completed, move it out of the active portfolio into the Archive. Its documents remain retrievable.</div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <select id="archiveProjectSelect" style="min-width:260px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg-2);color:var(--text);font-size:13px"></select>
+        <button class="btn btn-primary" onclick="archiveFromPortal()" style="padding:10px 18px">Close &amp; Archive →</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-head"><div><h2>Register a Document</h2><p>Contract documentation (BOQ, inspection request, recovery plan, etc.). Auto-stamps identity and date, and feeds the Document Register.</p></div><span class="pill blue">Contract entry</span></div>
+    <div class="panel upd">
+      <div class="upd-grid">
+        <div class="upd-field"><label>Project</label><select id="docProject"></select></div>
+        <div class="upd-field"><label>Document Type</label><select id="docType"><option>Award Letter</option><option>BOQ / Scope</option><option>Progress Report</option><option>Inspection Request</option><option>Testing Checklist</option><option>Recovery Plan</option><option>Site Photo</option><option>Close-Out</option></select></div>
+        <div class="upd-field"><label>Title</label><input type="text" id="docTitle" placeholder="e.g. Updated Site Progress Report" /></div>
+      </div>
+      <div class="upd-row"><button class="upd-btn" onclick="updAddDoc()">Register Document</button><span class="upd-note" id="docMsg"></span></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-head"><div><h2>Approval Sequence</h2><p>Standard multi-stage digital signature flow (Department → Finance → Operations → MD).</p></div></div>
+    <div class="panel">
+      <div class="flowbar" id="contractFlow"></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-head"><div><h2>File Pipeline by Status</h2><p>Drag-free demo of the tracking board. Red items are escalated to Management Attention.</p></div><span class="pill blue">Rule-based</span></div>
+    <div class="pipeline-board" id="contractBoard"></div>
+  </section>
+</main>
+<script src="assets/zcc-data.js"></script>
+<script src="assets/zcc-app.js"></script>
+</body>
+</html>

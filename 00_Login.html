@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Sign In · Zonexa v1.0</title>
+<link rel="stylesheet" href="assets/zcc.css">
+<style>
+  /* ============ INTERACTIVE SPLIT LOGIN ============ */
+  body.login-page{display:block;padding:0;height:100vh;overflow:hidden}
+  .login-split{display:flex;height:100vh;width:100%;overflow:hidden}
+
+  /* LEFT: brand + login card */
+  .login-left{
+    width:min(480px,100%);
+    flex:0 0 auto;
+    background:rgba(8,8,10,.7);
+    backdrop-filter:blur(18px);
+    border-right:1px solid var(--line);
+    display:flex;flex-direction:column;
+    justify-content:center;align-items:stretch;
+    padding:24px 44px 18px;
+    position:relative;z-index:3;
+    box-shadow:30px 0 80px rgba(23,24,43,.10);
+  }
+  .login-left .login-card{background:transparent;border:0;box-shadow:none;backdrop-filter:none;padding:0;border-radius:0}
+  .login-left .login-logo-wrap{background:transparent;border-bottom:1px solid var(--line);padding:0 0 22px;margin-bottom:22px;text-align:left}
+  .login-left .login-wordmark{
+    font-family:var(--font);font-size:52px;font-weight:800;letter-spacing:-.04em;color:#0a0a0a;line-height:1;
+    display:inline-block;
+    animation:zxLogoFloat 6s ease-in-out infinite;
+    transform-origin:center;
+  }
+  @keyframes zxLogoFloat{
+    0%{transform:translateY(0) rotate(0deg)}
+    25%{transform:translateY(-8px) rotate(-1.5deg)}
+    50%{transform:translateY(0) rotate(0deg)}
+    75%{transform:translateY(6px) rotate(1.5deg)}
+    100%{transform:translateY(0) rotate(0deg)}
+  }
+  .login-left .login-body{background:transparent;padding:0}
+  .login-left .login-title{font-size:20px;font-weight:700;letter-spacing:-.01em}
+  .login-left .login-subtitle{font-size:13px}
+  .login-left .field input{background:var(--bg-2);height:44px;font-size:14px}
+  .login-left .login-btn{height:44px;font-size:14px;margin-top:8px}
+  .login-left .login-hint{background:var(--bg-2);margin-top:14px;padding:10px 12px;font-size:11px}
+
+  /* RIGHT: interactive dancing particle field */
+  .login-right{flex:1;position:relative;overflow:hidden;background:var(--bg)}
+  #particles{position:absolute;inset:0;width:100%;height:100%;display:block}
+  .login-right .right-overlay{position:absolute;inset:0;pointer-events:none;z-index:2;
+    background:
+      radial-gradient(600px 600px at 80% 10%, rgba(10,10,10,.05), transparent 70%),
+      radial-gradient(600px 600px at 15% 80%, rgba(10,10,10,.04), transparent 70%)}
+  .login-right .right-heading{position:absolute;top:12%;left:8%;z-index:2;pointer-events:none;max-width:620px}
+  .login-right .right-heading .eyebrow{letter-spacing:.2em;text-transform:uppercase;font-size:11px;color:var(--muted);font-weight:700;margin-bottom:14px}
+  .login-right .right-heading h1{font-size:clamp(30px,5vw,58px);line-height:.95;text-transform:uppercase;letter-spacing:-.02em;margin:0 0 20px}
+  .login-right .right-heading h1 .grad{
+    background:#0a0a0a;
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent}
+  .login-right .right-heading p{color:var(--muted);font-size:16px;max-width:460px;line-height:1.6}
+  .login-right .stat-chip .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:8px}
+
+  @media(max-width:880px){
+    .login-left{width:100%;flex:1 1 auto;border-right:0;padding:34px 26px}
+    .login-right{display:none}
+    .login-split{flex-direction:column}
+  }
+</style>
+</head>
+<body class="staff login-page" data-public="1" data-page="login">
+<div class="login-split">
+  <!-- LEFT: login -->
+  <div class="login-left">
+    <div class="login-card">
+      <div class="login-logo-wrap"><span class="login-wordmark">Zonexa</span></div>
+      <div class="login-body">
+        <div class="login-title">Welcome back</div>
+        <div class="login-subtitle">Enter your access code to continue</div>
+        <div id="loginForm">
+          <div class="field"><label>Access Code</label><input type="text" id="accessCode" placeholder="ZW-XXXX" maxlength="7" autocomplete="off"></div>
+          <button class="btn btn-primary login-btn" onclick="attemptLogin()">Sign In →</button>
+          <div class="login-error" id="loginError"></div>
+        </div>
+        <div id="alreadySigned" style="display:none">
+          <div class="login-hint" style="margin-top:0">You are already signed in as <b id="signedAs">—</b>.</div>
+          <div class="login-continue" style="margin-top:12px">
+            <button class="btn btn-primary login-btn" id="continueBtn" style="margin-top:0">Continue to Portal</button>
+            <button class="btn btn-outline login-btn" style="margin-top:0" onclick="ZCC.signOut()">Switch User</button>
+          </div>
+        </div>
+        <div class="login-hint">
+          <b>Demo codes:</b> MD <b>ZW-0001</b> · Contract Lead <b>ZW-7293</b> · Accounts <b>ZW-6000</b> · PM <b>ZW-3387</b><br>
+          <b>Lost your code?</b> Contact your Contract Lead or IT administrator.<br>
+          <b>Security note:</b> Every upload and sign-off is recorded against your identity. Do not share your code.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: dancing particles + dashboard motion graphics follow mouse -->
+  <div class="login-right" id="loginRight">
+    <div class="right-overlay"></div>
+    <div class="right-heading">
+      <div class="eyebrow">A Zoneware Company · Project Intelligence Platform</div>
+      <h1>Everything in one<br><span class="grad">command center.</span></h1>
+      <p>Track contracts, files, payments and retention — at the touch of one button.</p>
+    </div>
+
+    <canvas id="particles"></canvas>
+  </div>
+</div>
+
+<script src="assets/zcc-data.js"></script>
+<script src="assets/zcc-app.js"></script>
+<script>
+/* ============ INTERACTIVE DANCING PARTICLES ============ */
+(function(){
+  var canvas=document.getElementById('particles'); if(!canvas) return;
+  var ctx=canvas.getContext('2d');
+  var right=document.getElementById('loginRight');
+  var DPR=Math.min(window.devicePixelRatio||1,2);
+  var W,H,mouse={x:-9999,y:-9999};
+  var pts=[], lines=[], hexes=[], logos=[];
+  var logoImg=new Image();
+  logoImg.src='assets/Zoneware_Logo_Transparent.png';
+
+  function resize(){
+    var r=right.getBoundingClientRect();
+    W=r.width; H=r.height;
+    canvas.width=W*DPR; canvas.height=H*DPR;
+    canvas.style.width=W+'px'; canvas.style.height=H+'px';
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+    build();
+  }
+  function build(){
+    var count=Math.min(90, Math.floor(W*H/18000));
+    pts=[];
+    for(var i=0;i<count;i++){
+      pts.push({x:Math.random()*W,y:Math.random()*H,
+        vx:(Math.random()-.5)*0.6,vy:(Math.random()-.5)*0.6,
+        r:Math.random()*2.6+0.8,
+        base:Math.random(),
+        hue:Math.random()<0.5?'10,10,10':'30,30,30'});
+    }
+    // hexagonal outline shapes ("hexagonal lines")
+    hexes=[];
+    for(var i=0;i<8;i++){
+      hexes.push({x:Math.random()*W,y:Math.random()*H,
+        vx:(Math.random()-.5)*0.4,vy:(Math.random()-.5)*0.4,
+        size:14+Math.random()*26, rot:Math.random()*6.28, vr:(Math.random()-.5)*0.02,
+        base:Math.random(), alpha:0.08+Math.random()*0.14});
+    }
+    // floating Zoneware logo shape (silhouette, low opacity)
+    logos=[];
+    var logoCount=3;
+    for(var i=0;i<logoCount;i++){
+      logos.push({x:Math.random()*W,y:Math.random()*H,
+        vx:(Math.random()-.5)*0.3,vy:(Math.random()-.5)*0.3,
+        rot:Math.random()*0.6-0.3, vr:(Math.random()-.5)*0.004,
+        base:Math.random(), scale:0.16+Math.random()*0.14, alpha:0.06+Math.random()*0.08});
+    }
+  }
+  function drawHex(cx,cy,size,rot,alpha){
+    ctx.beginPath();
+    for(var k=0;k<6;k++){
+      var a=rot+k/6*6.283;
+      var x=cx+size*Math.cos(a), y=cy+size*Math.sin(a);
+      if(k===0)ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    }
+    ctx.closePath();
+    ctx.strokeStyle='rgba(10,10,10,'+alpha+')';
+    ctx.lineWidth=1.2;
+    ctx.stroke();
+  }
+  function frame(t){
+    ctx.clearRect(0,0,W,H);
+    var time=t/1000;
+    // update + draw dots
+    for(var i=0;i<pts.length;i++){
+      var p=pts[i];
+      p.x+=p.vx; p.y+=p.vy;
+      p.x+=Math.sin(time*1.2+p.base*6.28)*0.25;
+      p.y+=Math.cos(time*1.5+p.base*6.28)*0.25;
+      var dx=mouse.x-p.x, dy=mouse.y-p.y, d2=dx*dx+dy*dy, d=Math.sqrt(d2);
+      if(d<220 && d>0.001){ var force=(220-d)/220*0.9; p.x+=dx/d*force; p.y+=dy/d*force; }
+      if(d<40 && d>0.001){ var rep=(40-d)/40*0.6; p.x-=dx/d*rep; p.y-=dy/d*rep; }
+      if(p.x<-20)p.x=W+20; if(p.x>W+20)p.x=-20;
+      if(p.y<-20)p.y=H+20; if(p.y>H+20)p.y=-20;
+      var tw=Math.sin(time*2+p.base*6.28)*0.5+0.5;
+      ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,6.283);
+      ctx.fillStyle='rgba('+p.hue+','+(0.35+tw*0.4)+')';
+      ctx.fill();
+    }
+    // connections
+    ctx.lineWidth=0.6;
+    for(var i=0;i<pts.length;i++){
+      for(var j=i+1;j<pts.length;j++){
+        var a=pts[i],b=pts[j];
+        var dx=a.x-b.x,dy=a.y-b.y,d2=dx*dx+dy*dy;
+        if(d2<120*120){
+          var alpha=(1-Math.sqrt(d2)/120)*0.35;
+          var nearMouse=(a.x-mouse.x)*(a.x-mouse.x)+(a.y-mouse.y)*(a.y-mouse.y)<180*180;
+          if(nearMouse) alpha*=1.6;
+          ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);
+          ctx.strokeStyle='rgba(10,10,10,'+alpha+')';
+          ctx.stroke();
+        }
+      }
+    }
+    // hexagonal outlines drifting
+    for(var i=0;i<hexes.length;i++){
+      var hx=hexes[i];
+      hx.x+=hx.vx+Math.sin(time*0.8+hx.base*6.28)*0.2;
+      hx.y+=hx.vy+Math.cos(time*0.9+hx.base*6.28)*0.2;
+      hx.rot+=hx.vr;
+      if(hx.x<-40)hx.x=W+40;if(hx.x>W+40)hx.x=-40;
+      if(hx.y<-40)hx.y=H+40;if(hx.y>H+40)hx.y=-40;
+      var ha=Math.sin(time*1.5+hx.base*6.28)*0.5+0.5;
+      drawHex(hx.x,hx.y,hx.size,hx.rot,hx.alpha*(0.5+ha*0.5));
+    }
+    // floating Zoneware logo silhouettes
+    if(logoImg && logoImg.complete && logoImg.naturalWidth>0){
+      for(var i=0;i<logos.length;i++){
+        var L=logos[i];
+        L.x+=L.vx+Math.sin(time*0.7+L.base*6.28)*0.3;
+        L.y+=L.vy+Math.cos(time*0.8+L.base*6.28)*0.3;
+        L.rot+=L.vr;
+        var lw=180*L.scale, lh=lw/logoImg.naturalWidth*logoImg.naturalHeight;
+        if(L.x<-lw)L.x=W+lw;if(L.x>W+lw)L.x=-lw;
+        if(L.y<-lh)L.y=H+lh;if(L.y>H+lh)L.y=-lh;
+        var la=Math.sin(time*1.2+L.base*6.28)*0.5+0.5;
+        ctx.save();
+        ctx.translate(L.x,L.y); ctx.rotate(L.rot);
+        ctx.globalAlpha=L.alpha*(0.5+la*0.7);
+        ctx.drawImage(logoImg,-lw/2,-lh/2,lw,lh);
+        ctx.restore();
+      }
+    }
+    requestAnimationFrame(frame);
+  }
+  right.addEventListener('mousemove',function(e){
+    var r=right.getBoundingClientRect();
+    mouse.x=e.clientX-r.left; mouse.y=e.clientY-r.top;
+  });
+  right.addEventListener('mouseleave',function(){ mouse.x=-9999;mouse.y=-9999; });
+  window.addEventListener('resize',resize);
+  resize();
+  requestAnimationFrame(frame);
+
+})();
+</script>
+</body>
+</html>

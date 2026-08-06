@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>File Tracking · Zonexa</title>
+<link rel="stylesheet" href="assets/zcc.css">
+</head>
+<body data-app="contract" data-page="contract-files">
+<main class="main">
+  <section class="zcc-page-head">
+    <div>
+      <div class="zcc-eyebrow">Zonexa · Contract Portal</div>
+      <h1>Government File Tracking</h1>
+      <p>Every contract file's movement across government offices, with live "days in stage" vs SLA.</p>
+    </div>
+    <span class="zcc-system-pill">Live Register</span>
+  </section>
+  <section class="section">
+    <div class="section-head"><div><h2>Move File to Next Office</h2><p>Update where a contract file is sitting. The "days in stage" clock resets and the SLA status recomputes.</p></div><span class="pill blue">Contract entry</span></div>
+    <div class="panel upd">
+      <div class="upd-grid">
+        <div class="upd-field"><label>Project</label><select id="mvProject"></select></div>
+        <div class="upd-field"><label>New Office / Stage</label><input type="text" id="mvOffice" placeholder="e.g. Ministry Inspector" /></div>
+        <div class="upd-field"><label>Note</label><input type="text" id="mvNote" placeholder="Optional" /></div>
+      </div>
+      <div class="upd-row"><button class="upd-btn" onclick="updMoveFile()">Move File</button><span class="upd-note" id="mvMsg"></span></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="panel" style="padding:0;overflow:hidden">
+      <div id="fileTrackingTable"></div>
+    </div>
+  </section>
+</main>
+<script src="assets/zcc-data.js"></script>
+<script src="assets/zcc-app.js"></script>
+</body>
+</html>

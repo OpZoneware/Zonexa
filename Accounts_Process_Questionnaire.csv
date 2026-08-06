@@ -1,0 +1,25 @@
+Question,Type,Options
+Your Name,Short answer,
+Role / Title,Short answer,
+Projects / accounts you handle,Short answer,
+Date,Date,
+How do you currently record payments received per project?,Paragraph,
+What payment information do you track for each project?,Checkboxes,"Contract value,Mobilization,Certified amount,Paid amount,Outstanding,Retention,Variations"
+Where do you keep these figures today?,Checkboxes,"Excel / Sheets,Accounting software,Google Drive,Paper / files,Other"
+How often do you update payment records?,Paragraph,
+How do you know what is outstanding on a project?,Paragraph,
+How do you receive payment/requisition requests from PMs?,Checkboxes,"Email,WhatsApp,Phone,Paper,Other"
+Walk me through a requisition from request to payment. Who approves? How long?,Paragraph,
+What documents do you need before processing a payment?,Paragraph,
+What is the biggest bottleneck in processing payments?,Paragraph,
+How do you verify that a request is within the right authority / limit?,Paragraph,
+How do you track retention held on each project?,Paragraph,
+"When is retention released, and how do you track that?",Paragraph,
+Do you monitor when retention becomes due for release?,Multiple choice,"Yes, tracked,No, we rely on memory,Partially"
+How do you track certifications / certifications received from clients?,Paragraph,
+What is your invoicing process for a project?,Paragraph,
+How do you track variations / scope changes financially?,Paragraph,
+"What financial reports do you produce, and for whom?",Paragraph,
+"If someone took over your role tomorrow, could they find everything?",Paragraph,
+What do you need from PMs / the office to work more efficiently?,Paragraph,
+"Any tool, report or process you wish you had?",Paragraph,

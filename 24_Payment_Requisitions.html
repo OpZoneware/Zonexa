@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Payment Requisitions · Zonexa</title>
+<link rel="stylesheet" href="assets/zcc.css">
+</head>
+<body data-app="accounts" data-page="requisitions">
+<main class="main">
+  <section class="zcc-page-head">
+    <div>
+      <div class="zcc-eyebrow">Zonexa · Accounts Portal</div>
+      <h1>Payment Requisitions</h1>
+      <p>Internal payment approvals (currently over email/WhatsApp) — with role-based spend limits and MD escalation for high amounts.</p>
+    </div>
+    <span class="zcc-system-pill">Approval Flow</span>
+  </section>
+
+  <section class="metric-row" id="reqKpis" style="margin-bottom:14px"></section>
+
+  <section class="section">
+    <div class="section-head"><div><h2>Requisitions</h2><p>MD can approve/reject items pending their decision.</p></div></div>
+    <div class="panel" style="padding:0;overflow:hidden" id="reqTable"></div>
+  </section>
+
+  <section class="section">
+    <div class="section-head"><div><h2>Spend Authority by Role</h2><p>Approval limits — MD final above all limits.</p></div></div>
+    <div class="panel" style="padding:0;overflow:hidden" id="reqLimits"></div>
+  </section>
+</main>
+<script src="assets/zcc-data.js"></script>
+<script src="assets/zcc-app.js"></script>
+</body>
+</html>

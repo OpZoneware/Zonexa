@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Projects · Zonexa</title>
+<link rel="stylesheet" href="assets/zcc.css">
+</head>
+<body data-app="cc" data-page="projects">
+<main class="main">
+  <section class="zcc-page-head">
+    <div>
+      <div class="zcc-eyebrow">Command Center · Projects</div>
+      <h1>Project Portfolio</h1>
+      <p>Every active project with status, value, delay and file-stage position. Click any card to open full details.</p>
+    </div>
+    <span class="zcc-system-pill">Executive View</span>
+  </section>
+  <section class="section" style="margin-top:6px" id="portfolio">
+    <div class="panel">
+      <div class="filters"><input id="search" placeholder="Search project, client, PM, vendor, issue..."/><select id="sector"><option value="">All Sectors</option></select><select id="client"><option value="">All Clients</option></select><select id="pm"><option value="">All PMs</option></select><select id="sort"><option value="priority">Sort: Priority</option><option value="delay">Sort: Delay</option><option value="progress">Sort: Progress</option><option value="file">Sort: Days in File Stage</option></select></div>
+      <div class="chips"><button class="chip active" data-status="">All</button><button class="chip" data-status="Green">Green</button><button class="chip" data-status="Amber">Amber</button><button class="chip" data-status="Red">Red</button><button class="chip" data-fresh="Stale">Stale Updates</button></div>
+    </div>
+    <div id="projectSummary" style="margin-top:14px;font-size:13px;color:#475569"></div>
+    <div class="grid" id="projectGrid" style="margin-top:16px"></div><div class="empty" id="empty" style="display:none">No project matches the current filters.</div>
+  </section>
+</main>
+<script src="assets/zcc-data.js"></script>
+<script src="assets/zcc-app.js"></script>
+</body>
+</html>

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Accounts Dashboard · Zonexa</title>
+<link rel="stylesheet" href="assets/zcc.css">
+</head>
+<body data-app="accounts" data-page="accounts-dash">
+<main class="main">
+  <section class="zcc-page-head">
+    <div>
+      <div class="zcc-eyebrow">Zonexa · Accounts Portal</div>
+      <h1>Accounts Dashboard</h1>
+      <p>Collection health — certified vs paid vs outstanding, and retention held per project.</p>
+    </div>
+    <span class="zcc-system-pill">Cost &amp; Collection View</span>
+  </section>
+
+  <section class="metric-row" id="acctKpis" style="margin-bottom:14px"></section>
+
+  <section class="section">
+    <div class="section-head"><div><h2>Record Payment</h2><p>Update certified / paid / retention for a project. Outstanding and collection % recompute automatically.</p></div><span class="pill blue">Accounts entry</span></div>
+    <div class="panel upd">
+      <div class="upd-grid">
+        <div class="upd-field"><label>Project</label><select id="payProject"></select></div>
+        <div class="upd-field"><label>Amount (₦)</label><input type="number" id="payAmount" min="1" step="1000000" placeholder="e.g. 50000000" /></div>
+        <div class="upd-field"><label>Update Type</label><select id="payKind"><option value="paid">Payment received</option><option value="certified">New certification</option><option value="retention">Retention released</option></select></div>
+        <div class="upd-field"><label>Note</label><input type="text" id="payNote" placeholder="Optional reference" /></div>
+      </div>
+      <div class="upd-row"><button class="upd-btn" onclick="updPayment()">Record Payment</button><span class="upd-note" id="payMsg"></span></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-head"><div><h2>Cost Control</h2><p>Per-project cost position. Outstanding is always derived (certified − paid), never typed.</p></div><span class="pill blue">Derived</span></div>
+    <div class="panel" style="padding:0;overflow:hidden">
+      <div id="acctTable"></div>
+    </div>
+  </section>
+</main>
+<script src="assets/zcc-data.js"></script>
+<script src="assets/zcc-app.js"></script>
+</body>
+</html>

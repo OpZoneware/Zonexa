@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Admin Console · Zonexa</title>
+<link rel="stylesheet" href="assets/zcc.css">
+</head>
+<body data-app="admin" data-page="admin-console">
+<main class="main">
+  <section class="zcc-page-head">
+    <div>
+      <div class="zcc-eyebrow">Zonexa · Admin Console</div>
+      <h1>Admin Console</h1>
+      <p>Super Admin only. Identity register, security controls and the immutable audit trail.</p>
+    </div>
+    <span class="zcc-system-pill">Restricted Access</span>
+  </section>
+
+  <section class="module-grid" style="margin-bottom:18px">
+    <div class="module-card"><h3>Identity Register</h3><p>Issue new users, rotate codes, and revoke or restore access. Revoked codes are rejected at sign-in.</p></div>
+    <div class="module-card"><h3>Security Controls</h3><p>Security epoch (force sign-out) and idle session timeout.</p></div>
+    <div class="module-card"><h3>Health Check</h3><p>Rule-based scan of stale updates, overdue files and pending approvals.</p></div>
+  </section>
+
+  <section class="section">
+    <div class="section-head"><div><h2>Issue New User</h2><p>Create an identity and issue a private access code.</p></div></div>
+    <div class="panel upd">
+      <div class="upd-grid">
+        <div class="upd-field"><label>Full Name</label><input type="text" id="nuName" placeholder="e.g. Olu Smith" /></div>
+        <div class="upd-field"><label>Email</label><input type="email" id="nuEmail" placeholder="name@zonewareltd.com" /></div>
+        <div class="upd-field"><label>Role</label><select id="nuRole"><option>Project Manager</option><option>Site Supervisor</option><option>Contract Lead</option><option>Accounts</option><option>Facility Manager</option><option>Super Admin</option></select></div>
+      </div>
+      <div class="upd-row"><button class="upd-btn" onclick="issueUser()">Issue User &amp; Generate Code</button><span class="upd-note" id="nuMsg"></span></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-head"><div><h2>Users &amp; Access Codes</h2><p>Every identity in the platform. Use <b>Rotate Code</b> to replace a leaked code, <b>Revoke</b> to remove access, and <b>Restore</b> to reinstate a revoked user. Revoked users are grouped at the top.</p></div></div>
+    <div class="panel" style="padding:0;overflow:hidden" id="acUsers"></div>
+  </section>
+
+  <section class="section">
+    <div class="section-head"><div><h2>Security Controls</h2><p>Epoch and timeout controls — server-side in production.</p></div></div>
+    <div class="panel" style="padding:0;overflow:hidden" id="acSessions"></div>
+  </section>
+
+  <section class="section">
+    <div class="section-head"><div><h2>Health Check &amp; Issues</h2><p>Automated scan surfaced from the live data.</p></div></div>
+    <div class="panel" id="acHealth"></div>
+  </section>
+
+  <section class="section">
+    <div class="section-head"><div><h2>Audit Trail</h2><p>Immutable record of events in this browser (demo).</p></div></div>
+    <div class="panel" style="padding:0;overflow:hidden" id="acAudit"></div>
+  </section>
+
+  <section class="section">
+    <div class="section-head"><div><h2>Document Uploads (All Users)</h2><p>Every document uploaded by anyone, with its timestamp.</p></div></div>
+    <div class="panel" style="padding:0;overflow:hidden" id="docUploads"></div>
+  </section>
+</main>
+<script src="assets/zcc-data.js"></script>
+<script src="assets/zcc-app.js"></script>
+</body>
+</html>

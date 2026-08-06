@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Staff Dashboard · Zonexa</title>
+<link rel="stylesheet" href="assets/zcc.css">
+</head>
+<body class="staff" data-app="staff" data-page="staff-dash">
+<main class="main">
+  <section class="staff-hero-card page-block" id="staffHero"></section>
+  <div class="stat-grid page-block" id="staffKpis"></div>
+  <div class="card card-pad page-block" id="pmProgressWrap" style="display:none">
+    <h3>Update Project Progress</h3>
+    <p style="margin:0 0 12px;color:#667085;font-size:13px">Project Managers update their projects' actual progress. The schedule status (Green/Amber/Red) recomputes automatically from the data.</p>
+    <div class="upd-grid">
+      <div class="upd-field"><label>Project</label><select id="projProject"></select></div>
+      <div class="upd-field"><label>Actual Progress (%)</label><input type="number" id="projActual" min="0" max="100" placeholder="e.g. 55" /></div>
+      <div class="upd-field"><label>Note</label><input type="text" id="projNote" placeholder="Optional" /></div>
+    </div>
+    <div class="upd-row"><button class="upd-btn" onclick="updProgress()">Update Progress</button><span class="upd-note" id="projMsg"></span></div>
+  </div>
+  <div class="card page-block" id="pmMySections" style="display:none">
+    <div class="card-pad" style="padding-bottom:0"><h3 style="margin:0">My Projects — Inspections &amp; Requisitions</h3></div>
+    <div class="layout" style="grid-template-columns:1fr 1fr;margin-top:8px">
+      <div class="card-pad">
+        <h4 style="margin:0 0 8px">My Inspections</h4>
+        <div class="table-wrap" style="margin-top:8px"><table class="table" id="myInspections"></table></div>
+      </div>
+      <div class="card-pad">
+        <h4 style="margin:0 0 8px">My Payment Requisitions</h4>
+        <div class="table-wrap" style="margin-top:8px"><table class="table" id="myRequisitions"></table></div>
+      </div>
+    </div>
+  </div>
+  <div class="card page-block">
+    <div class="card-pad" style="padding-bottom:0;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+      <h3 style="margin:0">My Outstanding Tasks</h3>
+      <a class="tiny-btn primary" href="11_My_Tasks.html" style="text-decoration:none">Open My Tasks →</a>
+    </div>
+    <div class="table-wrap" style="margin-top:12px"><table class="table" id="priorityTable"></table></div>
+  </div>
+  <div class="card card-pad page-block">
+  <h3>Upload &amp; Sign Off</h3>
+  <div class="upload-grid">
+    <div class="field"><label>My assigned task</label><select id="taskSelect"></select></div>
+    <div class="field"><label>Choose file</label><input type="file" id="fileInput"></div>
+  </div>
+  <div class="field" style="margin-top:12px"><label>Sign-off comment</label><textarea id="comment" placeholder="Add a short note..."></textarea></div>
+  <div style="margin-top:12px"><button class="btn btn-primary" onclick="simulateUpload()">Upload &amp; Sign Off</button><span class="message" id="uploadMsg"></span></div>
+</div>
+  <div class="module-grid">
+    <a class="link-card" href="11_My_Tasks.html"><div class="module-card"><h3><span class="mc-ico"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5.5" y="4.5" width="13" height="16" rx="2"/><path d="M9 4.5a3 3 0 0 1 6 0"/><path d="M9 11h6M9 15h6"/></svg></span>My Tasks</h3><p>All assigned upload tasks and stage sign-offs with search and filters.</p></div></a>
+    <a class="link-card" href="12_Site_Photos.html"><div class="module-card"><h3><span class="mc-ico"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 8.5h2.8l1.8-2h5.8l1.8 2h2.8a1 1 0 0 1 1 1V18a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1V9.5a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.2"/></svg></span>Site Photos</h3><p>Upload time-stamped site evidence linked to your assigned projects.</p></div></a>
+    <a class="link-card" href="13_My_Profile.html"><div class="module-card"><h3><span class="mc-ico"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.6"/><path d="M4.5 20.5c1.6-3.7 4.6-5 7.5-5s5.9 1.3 7.5 5"/></svg></span>My Profile</h3><p>Your identity, role, access level and full assignment history.</p></div></a>
+  </div>
+</main>
+<script src="assets/zcc-data.js"></script>
+<script src="assets/zcc-app.js"></script>
+</body>
+</html>
