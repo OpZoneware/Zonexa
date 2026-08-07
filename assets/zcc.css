@@ -882,3 +882,28 @@ body.staff .table th,
 }
 /* staff tables keep readable header (white text on black) */
 body.staff .table th{background:#0a0a0a!important;color:#fff!important}
+
+/* ============================================================
+   APPROVAL FILE TRACKER (video-inspired status tracker)
+   ============================================================ */
+.aw-track{height:6px;border-radius:99px;background:#eee;overflow:hidden;position:relative}
+.aw-fill{height:100%;border-radius:99px}
+.aw-nodes{gap:4px!important}
+.aw-node{flex:1;min-width:92px;border:1px solid var(--line);border-radius:10px;padding:8px 6px;text-align:center;background:var(--card);transition:.15s}
+.aw-node-icon{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:#eee;color:#fff;font-size:12px;font-weight:800;margin-bottom:5px}
+.aw-node-name{font-size:10px;font-weight:700;color:#555;line-height:1.2}
+.aw-node.done{border-color:rgba(22,163,74,.4)}
+.aw-node.done .aw-node-icon{background:#16a34a}
+.aw-node.done .aw-node-name{color:#15803d}
+.aw-node.current{border-color:#2563eb;box-shadow:0 0 0 2px rgba(37,99,235,.18)}
+.aw-node.current .aw-node-icon{background:#2563eb}
+.aw-node.current .aw-node-name{color:#1d4ed8;font-weight:800}
+.aw-node.rejected{border-color:rgba(220,38,38,.4)}
+.aw-node.rejected .aw-node-icon{background:#dc2626}
+.aw-node.rejected .aw-node-name{color:#b91c1c}
+.aw-hist-row{display:grid;grid-template-columns:1fr auto 1fr auto auto;gap:10px;align-items:center;font-size:12px;padding:5px 0;border-bottom:1px dashed var(--line);color:#444}
+.aw-hist-row:last-child{border-bottom:0}
+.aw-hist-step{font-weight:700;color:#0a0a0a}
+.aw-hist-date{color:#64748b}
+.aw-hist-days{font-weight:700;color:#64748b;min-width:36px;text-align:right}
+@media(max-width:640px){.aw-hist-row{grid-template-columns:1fr 1fr;font-size:11px}}

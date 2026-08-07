@@ -149,6 +149,7 @@ const NAV = {
       ['integrations','Integrations', '25_Integrations.html', 'file'],
       ['vendors',    'Vendor Register', '27_Vendor_Register.html', 'user'],
       ['archive',    'Project Archive', '28_Project_Archive.html', 'folder'],
+      ['constr-analytics', 'Construction Analytics', '29_Construction_Analytics.html', 'chart'],
     ]
   },
   staff: {
@@ -1427,6 +1428,54 @@ function renderApprovalWorkflow(){
       `<div class="step"><div class="num">${i + 1}</div><b style="font-size:12px">${esc(s.step)}</b><div style="color:#64748b;font-size:11px;margin-top:5px">${esc(s.role)} · SLA ${s.slaDays}d</div></div>`
     ).join('');
   }
+  /* the interactive file tracker — one card per project with a
+     horizontal approval timeline (per-step status, current position,
+     and clickable approval history). Mirrors the status-tracker pattern. */
+  const tracker = $('awTracker');
+  if (tracker) {
+    tracker.innerHTML = FILE_JOURNEYS.map((j, fi) => {
+      const p = PROJECTS.find(x => x.id === j.projectId);
+      const total = APPROVAL_FLOW_FULL.length;
+      const steps = APPROVAL_FLOW_FULL.map((st, i) => {
+        let stCls = 'pending', icon = '·', label = 'Pending';
+        if (i < j.stepIndex) { stCls='done'; icon='✓'; label='Approved'; }
+        else if (i === j.stepIndex) {
+          if (j.status === 'rejected') { stCls='rejected'; icon='✗'; label='Rejected'; }
+          else { stCls='current'; icon='●'; label='In progress'; }
+        }
+        return `<div class="aw-node ${stCls}" title="${esc(st.step)}: ${label}">
+          <span class="aw-node-icon">${icon}</span>
+          <div class="aw-node-name">${esc(st.step)}</div>
+        </div>`;
+      }).join('');
+      // approval history (video-style)
+      const hist = (j.history||[]).map(h =>
+        `<div class="aw-hist-row"><span class="aw-hist-step">${esc(h.step)}</span>
+          <span class="pill ${h.action==='Approved'?'green':h.action==='Rejected'?'red':'amber'}">${esc(h.action)}</span>
+          <span>${esc(h.by)}</span><span class="aw-hist-date">${esc(h.date)}</span>
+          <span class="aw-hist-days">${h.days>0? h.days+'d':'now'}</span></div>`
+      ).join('');
+      const posPct = j.status==='rejected' ? 100 : Math.round(j.stepIndex/(total-1)*100);
+      return `<div class="aw-card" style="border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px;background:var(--card)">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:10px">
+          <b style="font-size:15px">${esc(p?p.name:j.projectId)}</b>
+          <div style="display:flex;gap:8px;align-items:center">
+            <span style="font-size:12px;color:#64748b">Currently with:</span>
+            <b>${esc(APPROVAL_FLOW_FULL[j.stepIndex].step)}</b>
+            <span class="pill ${j.status==='rejected'?'red':j.status==='pending'?'amber':'green'}">${j.status==='rejected'?'Rejected':'Pending'}</span>
+          </div>
+        </div>
+        <div class="aw-track">
+          <div class="aw-fill" style="width:${posPct}%;background:${j.status==='rejected'?'#dc2626':'#2563eb'}"></div>
+        </div>
+        <div class="aw-nodes" style="display:flex;gap:4px;margin-top:10px;overflow-x:auto">${steps}</div>
+        <div class="aw-hist" style="margin-top:12px;border-top:1px solid var(--line);padding-top:10px">
+          <div style="font-size:11px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Approval History</div>
+          ${hist}
+        </div>
+      </div>`;
+    }).join('');
+  }
   const table = $('awTable');
   if (table) {
     const rows = FILE_JOURNEYS.map(j => {
@@ -1434,13 +1483,13 @@ function renderApprovalWorkflow(){
       const cur = APPROVAL_FLOW_FULL[j.stepIndex];
       const back = j.stepIndex > 0 ? APPROVAL_FLOW_FULL[j.stepIndex - 1].step : '—';
       const ahead = j.stepIndex < APPROVAL_FLOW_FULL.length - 1 ? APPROVAL_FLOW_FULL[j.stepIndex + 1].step : 'Complete';
-      const pos = Math.round(j.stepIndex / (APPROVAL_FLOW_FULL.length - 1) * 100);
+      const pos = j.status==='rejected'?100:Math.round(j.stepIndex / (APPROVAL_FLOW_FULL.length - 1) * 100);
       return `<tr onclick="openProject('${j.projectId}')">
         <td><b>${esc(p ? p.name : j.projectId)}</b><br><span style="color:#64748b">${esc(j.projectId)}</span></td>
         <td>${back}</td>
         <td><b>${esc(cur.step)}</b><br><span style="color:#64748b">${esc(cur.role)}</span></td>
         <td>${ahead}</td>
-        <td><div class="track" style="min-width:110px"><div class="fill ${cls(p ? p.status : '')}" style="width:${pos}%"></div></div></td>
+        <td><div class="track" style="min-width:110px"><div class="fill ${j.status==='rejected'?'red':cls(p?p.status:'')}" style="width:${pos}%"></div></div></td>
         <td style="color:#64748b;font-size:12px">${esc(j.note)}</td>
       </tr>`;
     }).join('');
@@ -1786,6 +1835,148 @@ function archiveProject(id){
 }
 
 /* ============================================================
+   CONSTRUCTION ANALYTICS (29) — cost forecast, cash flow,
+   risk heat map, Gantt schedule
+   ============================================================ */
+function renderConstrAnalytics(){
+  // project selector
+  const sel = $('caProject');
+  if (sel) {
+    sel.innerHTML = PROJECTS.map(p => `<option value="${esc(p.id)}">${esc(p.id)} · ${esc(p.name)}</option>`).join('');
+    if (sel.options.length) sel.value = sel.options[0].value;
+  }
+  const pid = sel ? sel.value : (PROJECTS[0] && PROJECTS[0].id);
+  renderCAProject(pid);
+  if (sel) sel.onchange = () => renderCAProject(sel.value);
+}
+function renderCAProject(pid){
+  const p = PROJECTS.find(x => x.id === pid); if (!p) return;
+  renderCACost(p);
+  renderCAScurve(p);
+  renderCARisk(p);
+  renderCAGantt(p);
+}
+/* 1. Budget vs Forecast cost */
+function renderCACost(p){
+  const cf = COST_FORECAST[p.id] || {};
+  const kpi = $('caCostKpis');
+  if (kpi) {
+    const variance = (cf.forecast||0) - (cf.currentBudget||0);
+    const over = variance > 0;
+    kpi.innerHTML = [
+      ['Current Budget', cf.currentBudget||0, 'money'],
+      ['Committed', cf.committed||0, 'money'],
+      ['Forecast to Complete', cf.forecast||0, 'money'],
+      ['Variance', Math.abs(variance), 'money'],
+    ].map(([lab, v, kd]) => `<div class="metric-card"><span>${lab}</span><b data-target="${v}" data-kind="${kd}">₦0</b><span style="color:${over?'#b91c1c':'#15803d'}">${over?'OVER BUDGET':'ON/UNDER BUDGET'}</span></div>`).join('');
+    kpi.querySelectorAll('b').forEach(runCounter);
+    staggerChildren(kpi, 60, 6);
+  }
+  // waterfall: budget -> committed -> forecast -> variance
+  const w = $('caWaterfall');
+  if (w) {
+    const maxV = Math.max(cf.currentBudget||0, cf.forecast||0);
+    const bar = (label, val, color) => {
+      const pct = maxV ? (val/maxV*100) : 0;
+      return `<div style="margin-bottom:14px"><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px"><b>${label}</b><span>${money(val)}</span></div><div style="height:22px;background:#eee;border-radius:6px;overflow:hidden"><div class="an-fill" style="height:22px;width:${pct}%;background:${color};border-radius:6px"></div></div></div>`;
+    };
+    w.innerHTML = bar('Original Budget', cf.originalBudget||0, '#1f2937') +
+      bar('Adjustments + Contingency', ((cf.adjustments||0)+(cf.contingency||0)), '#6b7280') +
+      bar('Current Budget', cf.currentBudget||0, '#0a0a0a') +
+      bar('Committed (signed)', cf.committed||0, '#2563eb') +
+      bar('Forecast to Complete', cf.forecast||0, (cf.forecast||0)>(cf.currentBudget||0)?'#dc2626':'#16a34a');
+    animateBars(w);
+  }
+}
+/* 2. Cash flow S-curve */
+function renderCAScurve(p){
+  const el = $('caScurve'); if (!el) return;
+  const cf = CASH_FLOW[p.id]; if (!cf) { el.innerHTML = '<div class="empty">No cash-flow data.</div>'; return; }
+  const labels = cf.labels, planned = cf.planned, actual = cf.actual;
+  const w = 760, h = 260, m = 46;
+  const maxV = Math.max(...planned, ...actual);
+  const X = i => m + i*((w-2*m)/(labels.length-1));
+  const Y = v => h-m - (v/maxV)*(h-2*m);
+  const line = arr => arr.map((v,i)=>`${X(i)},${Y(v)}`).join(' ');
+  let grid = '';
+  for (let v=0; v<=maxV; v+=Math.ceil(maxV/4)){
+    const y = Y(v);
+    grid += `<line x1="${m}" y1="${y}" x2="${w-m}" y2="${y}" stroke="#e5e7eb"/><text x="4" y="${y+4}" font-size="9" fill="#64748b">${money(v).replace('₦','')}</text>`;
+  }
+  el.innerHTML = `<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:auto">
+    ${grid}
+    <polyline points="${line(planned)}" fill="none" stroke="#0a0a0a" stroke-width="2.5"/>
+    <polyline points="${line(actual)}" fill="none" stroke="#2563eb" stroke-width="2.5"/>
+    ${actual.map((v,i)=>`<circle cx="${X(i)}" cy="${Y(v)}" r="3.5" fill="#2563eb"><title>${labels[i]} ${money(v)}</title></circle>`).join('')}
+    ${labels.map((l,i)=>`<text x="${X(i)-20}" y="${h-m+18}" font-size="10" fill="#64748b">${l}</text>`).join('')}
+  </svg>
+  <div style="display:flex;gap:18px;font-size:12px;color:#64748b;margin-top:8px"><span style="color:#0a0a0a">● Planned</span><span style="color:#2563eb">● Actual</span></div>`;
+}
+/* 4. Risk heat map */
+function renderCARisk(p){
+  const el = $('caRiskMap'); if (!el) return;
+  const r = RISK_HEAT[p.id]; if (!r) return;
+  const size = 5;
+  const color = (x,y) => {
+    const v = x*y;
+    if (v >= 16) return '#dc2626';
+    if (v >= 9) return '#f59e0b';
+    return '#16a34a';
+  };
+  const label = x => x===1?'Very Low':x===2?'Low':x===3?'Medium':x===4?'High':'Very High';
+  let cells = '';
+  for (let row=size; row>=1; row--){
+    for (let col=1; col<=size; col++){
+      const isPre = (col===r.x && row===r.y);
+      const bg = color(col,row);
+      cells += `<div style="width:64px;height:64px;background:${isPre?bg:bg+'55'};border:${isPre?'2px solid #0a0a0a':'1px solid #e5e7eb'};display:flex;align-items:center;justify-content:center;border-radius:6px;position:relative">
+        ${isPre?`<span style="position:absolute;top:2px;right:4px;font-size:9px;color:#fff">●</span>`:''}
+      </div>`;
+    }
+  }
+  el.innerHTML = `<div style="display:flex;gap:18px;align-items:flex-start">
+    <div style="display:grid;grid-template-columns:repeat(${size},64px);gap:4px">${cells}</div>
+    <div style="font-size:13px;line-height:1.8">
+      <b>Pre-treatment:</b> Impact <b>${label(r.y)}</b> × Probability <b>${label(r.x)}</b> = <b>${r.pre}</b><br>
+      <b>Post-treatment:</b> <b>${r.post}</b><br><br>
+      <span style="color:#64748b;font-size:12px">High × High = severe risk (red). Low × Low = low risk (green).</span>
+    </div>
+  </div>`;
+}
+/* 6. Gantt schedule */
+function renderCAGantt(p){
+  const el = $('caGantt'); if (!el) return;
+  const sd = SCHEDULE_DATA[p.id]; if (!sd) { el.innerHTML = '<div class="empty">No schedule data.</div>'; return; }
+  const laneW = 760, topPad = 30;
+  const x = v => (v/100)*laneW;
+  let rows = '';
+  sd.phases.forEach(ph => {
+    const bStart = x(ph.bS), bW = x(ph.bE)-x(ph.bS);
+    const aStart = ph.aS!==null?x(ph.aS):null, aW = ph.aS!==null&&ph.aE?x(ph.aE)-x(ph.aS):0;
+    rows += `<div style="display:flex;align-items:center;margin-bottom:14px">
+      <div style="width:200px;font-size:12px;color:#0a0a0a;font-weight:600">${esc(ph.name)}</div>
+      <div style="flex:1;position:relative;height:22px">
+        <div style="position:absolute;top:0;height:10px;background:#1f2937;border-radius:4px;left:${bStart}px;width:${bW}px;opacity:.85"></div>
+        ${aStart!==null?`<div style="position:absolute;top:12px;height:10px;background:#2563eb;border-radius:4px;left:${aStart}px;width:${aW}px"></div>`:''}
+      </div>
+    </div>`;
+  });
+  // forecast line
+  const fX = x(sd.forecastEnd), bX = x(sd.baselineEnd);
+  el.innerHTML = `<div style="display:flex;align-items:center;margin-bottom:10px">
+      <div style="width:200px;font-size:11px;color:#64748b">Baseline end · Forecast</div>
+      <div style="flex:1;position:relative;height:14px">
+        <div style="position:absolute;left:${bX}px;top:0;width:2px;height:14px;background:#0a0a0a"></div>
+        <div style="position:absolute;left:${fX}px;top:0;width:2px;height:14px;background:#dc2626"></div>
+        <div style="position:absolute;left:${bX-10}px;top:16px;font-size:9px;color:#0a0a0a">Baseline</div>
+        <div style="position:absolute;left:${fX-12}px;top:16px;font-size:9px;color:#dc2626">Forecast</div>
+      </div>
+    </div>
+    ${rows}
+    <div style="display:flex;gap:18px;font-size:12px;color:#64748b;margin-top:8px"><span style="color:#1f2937">● Baseline</span><span style="color:#2563eb">● Actual</span></div>`;
+}
+
+/* ============================================================
    LOGIN (00_Login.html)
    ============================================================ */
 function attemptLogin() {
@@ -1898,6 +2089,8 @@ function boot() {
       renderReport(); break;
     case 'archive':
       renderArchive(); bindCC(); break;
+    case 'constr-analytics':
+      renderConstrAnalytics(); bindCC(); break;
     /* ---- Staff Workspace ---- */
     case 'staff-dash':
       renderStaffHero(user); renderStaffKpis(); renderPriorityTasks(); renderTaskOptions();

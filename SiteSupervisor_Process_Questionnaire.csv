@@ -4,16 +4,14 @@ Role / Title,Short answer,
 Site(s) you supervise,Short answer,
 Date,Date,
 Walk me through your typical day on site.,Paragraph,
-How do you record the work done each day?,Checkboxes,"Mental / memory,Paper / notes,WhatsApp,Photos,App / software,Other"
-How do you report daily progress to the PM?,Checkboxes,"WhatsApp,Phone call,Email,Photos,Other"
+How do you record the work done each day?,Checkboxes,"Mental / memory,Paper / notes,WhatsApp,Photos,App,Other"
 How do you know the work is on schedule or behind?,Paragraph,
+Do you track actual progress vs the planned schedule?,Paragraph,
 How do you capture site photos / evidence?,Paragraph,
-Are your reports time-stamped / dated?,Multiple choice,"Always,Sometimes,Rarely / never"
+Are your reports time-stamped / dated?,Multiple choice,"Always,Sometimes,Rarely"
 How do you check the quality of work and materials?,Paragraph,
+Do you flag potential schedule delays or risks to the PM?,Paragraph,
 How do you flag a safety concern or problem on site?,Paragraph,
-What are the most common issues you deal with?,Paragraph,
-"Who do you escalate issues to, and how quickly do they respond?",Paragraph,
 How do you request materials or equipment?,Paragraph,
-How do you coordinate the workers / vendors on site?,Paragraph,
 What do you need from the PM / office to do your job better?,Paragraph,
-"Any tool, report or process you wish you had to make site work easier?",Paragraph,
+"Any tool, report or process you wish you had?",Paragraph,

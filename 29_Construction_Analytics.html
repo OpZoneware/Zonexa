@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Construction Analytics · Zonexa</title>
+<link rel="stylesheet" href="assets/zcc.css">
+</head>
+<body data-app="cc" data-page="constr-analytics">
+<main class="main">
+  <section class="zcc-page-head">
+    <div>
+      <div class="zcc-eyebrow">Zonexa · Command Center</div>
+      <h1>Construction Analytics</h1>
+      <p>Cost forecasting (budget vs forecast), cash-flow S-curve, risk heat map, and schedule (Gantt) — the core construction dashboards.</p>
+    </div>
+    <span class="zcc-system-pill">Construction Reporting</span>
+  </section>
+
+  <section class="panel" style="margin-bottom:18px">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap">
+      <b style="font-size:15px">Select Project</b>
+      <select id="caProject" style="min-width:300px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg-2);color:var(--text);font-size:13px"></select>
+    </div>
+  </section>
+
+  <section class="section" id="caCostSection">
+    <div class="section-head"><div><h2>Budget vs Forecast Cost to Complete</h2><p>Original budget, commitments, forecast to complete, and variance — a leading indicator of cost overrun.</p></div></div>
+    <div class="metric-row" id="caCostKpis"></div>
+    <div class="panel" style="margin-top:14px" id="caWaterfall"></div>
+  </section>
+
+  <section class="section" id="caCashSection">
+    <div class="section-head"><div><h2>Cash Flow — S-Curve</h2><p>Cumulative planned vs actual spend over time.</p></div></div>
+    <div class="panel" id="caScurve"></div>
+  </section>
+
+  <section class="section" id="caRiskSection">
+    <div class="section-head"><div><h2>Risk Heat Map</h2><p>Probability × Impact — pre-treatment and post-treatment positions.</p></div></div>
+    <div class="panel" id="caRiskMap"></div>
+  </section>
+
+  <section class="section" id="caScheduleSection">
+    <div class="section-head"><div><h2>Schedule (Gantt)</h2><p>Baseline vs actual progress, with forecast completion line.</p></div></div>
+    <div class="panel" id="caGantt"></div>
+  </section>
+</main>
+<script src="assets/zcc-data.js"></script>
+<script src="assets/zcc-app.js"></script>
+</body>
+</html>

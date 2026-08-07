@@ -367,13 +367,20 @@ const APPROVAL_FLOW_FULL = [
 
 /* current position of each project's file along that chain */
 const FILE_JOURNEYS = [
-  { projectId:'ZW-001', stepIndex:2, note:'With User Department — awaiting technical approval' },
-  { projectId:'ZW-002', stepIndex:1, note:'At Audit — vendor resource review' },
-  { projectId:'ZW-003', stepIndex:1, note:'At Audit — finishing materials sign-off' },
-  { projectId:'ZW-004', stepIndex:4, note:'At Accounts — monthly invoice certification' },
-  { projectId:'ZW-005', stepIndex:3, note:'At Engineering — junction testing evidence' },
-  { projectId:'ZW-006', stepIndex:4, note:'At Accounts — early payment documentation' },
-  { projectId:'ZW-007', stepIndex:1, note:'At Audit — awaiting fresh site update' }
+  { projectId:'ZW-001', stepIndex:2, status:'pending', note:'With User Department — awaiting technical approval',
+    history:[{step:'Procurement',action:'Approved',by:'Contract Lead',date:'17-Jul',days:2},{step:'Audit',action:'Approved',by:'Accounts',date:'20-Jul',days:3},{step:'User Department',action:'Pending',by:'—',date:'—',days:0}] },
+  { projectId:'ZW-002', stepIndex:1, status:'pending', note:'At Audit — vendor resource review',
+    history:[{step:'Procurement',action:'Approved',by:'Contract Lead',date:'22-Jul',days:2},{step:'Audit',action:'Pending',by:'—',date:'—',days:0}] },
+  { projectId:'ZW-003', stepIndex:1, status:'pending', note:'At Audit — finishing materials sign-off',
+    history:[{step:'Procurement',action:'Approved',by:'Contract Lead',date:'15-Jul',days:3},{step:'Audit',action:'Pending',by:'—',date:'—',days:0}] },
+  { projectId:'ZW-004', stepIndex:4, status:'pending', note:'At Accounts — monthly invoice certification',
+    history:[{step:'Procurement',action:'Approved',by:'Contract Lead',date:'10-Jul',days:1},{step:'Audit',action:'Approved',by:'Accounts',date:'12-Jul',days:2},{step:'User Dept',action:'Approved',by:'Contract Lead',date:'18-Jul',days:6},{step:'Engineering',action:'Approved',by:'PM',date:'22-Jul',days:4},{step:'Accounts',action:'Pending',by:'—',date:'—',days:0}] },
+  { projectId:'ZW-005', stepIndex:3, status:'pending', note:'At Engineering — junction testing evidence',
+    history:[{step:'Procurement',action:'Approved',by:'Contract Lead',date:'14-Jul',days:2},{step:'Audit',action:'Approved',by:'Accounts',date:'17-Jul',days:3},{step:'User Dept',action:'Approved',by:'Contract Lead',date:'21-Jul',days:4},{step:'Engineering',action:'Pending',by:'—',date:'—',days:0}] },
+  { projectId:'ZW-006', stepIndex:4, status:'pending', note:'At Accounts — early payment documentation',
+    history:[{step:'Procurement',action:'Approved',by:'Contract Lead',date:'20-Jul',days:1},{step:'Audit',action:'Approved',by:'Accounts',date:'23-Jul',days:3},{step:'User Dept',action:'Approved',by:'Contract Lead',date:'26-Jul',days:3},{step:'Engineering',action:'Approved',by:'PM',date:'28-Jul',days:2},{step:'Accounts',action:'Pending',by:'—',date:'—',days:0}] },
+  { projectId:'ZW-007', stepIndex:1, status:'rejected', note:'At Audit — awaiting fresh site update (previously rejected on docs)',
+    history:[{step:'Procurement',action:'Approved',by:'Contract Lead',date:'19-Jul',days:2},{step:'Audit',action:'Rejected',by:'Accounts',date:'23-Jul',days:4}] }
 ];
 
 /* 15. Spend-authority limits per role (MD's "trust + controls")
@@ -488,3 +495,65 @@ ZCC.saveArchive = function(a){ try { localStorage.setItem(ARCHIVE_KEY, JSON.stri
     if (archivedIds.includes(PROJECTS[i].id)) PROJECTS.splice(i, 1);
   }
 })();
+
+/* ============================================================
+   Zonexa v1.0 — ADVANCED CONSTRUCTION DASHBOARD DATA
+   Added per the construction-dashboard reference:
+   1. Budget vs Forecast Cost to Complete (+ variance)
+   2. Cash flow S-curve (planned vs actual monthly)
+   4. Risk probability × impact heat map
+   6. Gantt-style schedule (baseline vs actual vs forecast)
+   ============================================================ */
+
+/* 1. Cost forecasting — budget, commitments, forecast cost to complete */
+const COST_FORECAST = {
+  'ZW-001':{ originalBudget:850000000, adjustments:0, contingency:50000000, currentBudget:900000000, committed:720000000, forecast:940000000, spent:255000000 },
+  'ZW-002':{ originalBudget:420000000, adjustments:0, contingency:20000000, currentBudget:440000000, committed:380000000, forecast:435000000, spent:126000000 },
+  'ZW-003':{ originalBudget:260000000, adjustments:0, contingency:15000000, currentBudget:275000000, committed:230000000, forecast:268000000, spent:104000000 },
+  'ZW-004':{ originalBudget:90000000,  adjustments:0, contingency:5000000,  currentBudget:95000000,  committed:75000000,  forecast:92000000,  spent:54000000 },
+  'ZW-005':{ originalBudget:380000000, adjustments:15000000, contingency:25000000, currentBudget:420000000, committed:360000000, forecast:430000000, spent:190000000 },
+  'ZW-006':{ originalBudget:180000000, adjustments:0, contingency:10000000, currentBudget:190000000, committed:165000000, forecast:185000000, spent:90000000 },
+  'ZW-007':{ originalBudget:240000000, adjustments:0, contingency:12000000, currentBudget:252000000, committed:205000000, forecast:248000000, spent:56000000 }
+};
+
+/* 2. Cash flow S-curve — cumulative planned vs actual spend per project (monthly) */
+const CASH_FLOW = {
+  'ZW-001': { labels:['Jun','Jul','Aug','Sep','Oct','Nov'], planned:[0,90000000,210000000,390000000,560000000,700000000], actual:[0,110000000,255000000] },
+  'ZW-002': { labels:['Jun','Jul','Aug','Sep','Oct'], planned:[0,80000000,180000000,300000000,390000000], actual:[0,90000000,126000000] },
+  'ZW-003': { labels:['Jun','Jul','Aug','Sep'], planned:[0,70000000,150000000,230000000], actual:[0,80000000,104000000] },
+  'ZW-005': { labels:['Jun','Jul','Aug'], planned:[0,130000000,250000000], actual:[0,150000000,190000000] },
+  'ZW-006': { labels:['Jun','Jul','Aug'], planned:[0,50000000,110000000], actual:[0,60000000,90000000] },
+  'ZW-007': { labels:['Jun','Jul','Aug','Sep'], planned:[0,40000000,90000000,160000000], actual:[0,40000000,56000000] }
+};
+
+/* 4. Risk heat-map data — probability & impact on a 5×5 scale (1-5) */
+const RISK_HEAT = {
+  'ZW-001': { x:5, y:5, pre:'High', post:'High' },
+  'ZW-002': { x:3, y:3, pre:'Medium', post:'Low' },
+  'ZW-003': { x:3, y:3, pre:'Medium', post:'Medium' },
+  'ZW-004': { x:1, y:2, pre:'Low', post:'Low' },
+  'ZW-005': { x:4, y:4, pre:'High', post:'Medium' },
+  'ZW-006': { x:2, y:2, pre:'Low', post:'Low' },
+  'ZW-007': { x:4, y:3, pre:'High', post:'Medium' }
+};
+
+/* 6. Gantt-style schedule — baseline vs actual vs forecast per project.
+   Each phase: name, baselineStart(0-100), baselineEnd, actualStart(actual or null), actualEnd */
+const SCHEDULE_DATA = {
+  'ZW-001': {
+    forecastEnd:92, baselineEnd:70,
+    phases:[
+      { name:'Contract & Mobilization', bS:0, bE:15, aS:0, aE:15 },
+      { name:'Foundation & Access',     bS:15,bE:40, aS:15,aE:50 },
+      { name:'Structure',               bS:40,bE:60, aS:50,aE:70 },
+      { name:'Finishing & Systems',     bS:60,bE:80, aS:70,aE:90 },
+      { name:'Inspection & Handover',   bS:80,bE:95, aS:90,aE:100 }
+    ]
+  },
+  'ZW-002': { forecastEnd:80, baselineEnd:70, phases:[
+      { name:'Mobilization', bS:0,bE:10, aS:0,aE:10 },
+      { name:'Civil Works',  bS:10,bE:55, aS:10,aE:55 },
+      { name:'Installation', bS:55,bE:75, aS:55,aE:78 },
+      { name:'Handover',     bS:75,bE:90, aS:78,aE:100 }
+  ]}
+};
