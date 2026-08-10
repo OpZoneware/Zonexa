@@ -23,6 +23,17 @@
     <div class="section-head"><div><h2>All Vendors</h2><p>Status reflects trust level: <b>Trusted</b> = core/Ministry-approved partner, <b>Approved</b> = active vendor.</p></div></div>
     <div class="panel" style="padding:0;overflow:hidden" id="vndTable"></div>
   </section>
+
+  <section class="section">
+    <div class="section-head"><div><h2>Vendor Payment History</h2><p>Select a vendor to see all payments across their projects.</p></div><span class="pill blue">Per Vendor</span></div>
+    <div class="panel" style="margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <b style="font-size:14px">Select Vendor</b>
+        <select id="vpVendor" style="min-width:320px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg-2);color:var(--text);font-size:13px" onchange="renderVendorHistory()"></select>
+      </div>
+    </div>
+    <div class="panel" id="vendorHistory"></div>
+  </section>
 </main>
 <script src="assets/zcc-data.js"></script>
 <script src="assets/zcc-app.js"></script>

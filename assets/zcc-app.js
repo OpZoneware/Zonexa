@@ -1725,6 +1725,43 @@ function renderVendors(){
     t.innerHTML = `<table class="file-table"><thead><tr><th>Vendor</th><th>Category</th><th>Contact</th><th>Status</th><th>Rating</th><th>Current Projects</th><th>Note</th></tr></thead><tbody>${rows}</tbody></table>`;
     staggerRows(t);
   }
+  // vendor selector
+  const sel = $('vpVendor');
+  if (sel) {
+    sel.innerHTML = '<option value="">Select vendor…</option>' + VENDORS.map(v => `<option value="${esc(v.id)}">${esc(v.name)}</option>`).join('');
+  }
+  renderVendorHistory();
+}
+function renderVendorHistory(){
+  const el = $('vendorHistory'); if (!el) return;
+  const vid = $('vpVendor')?.value;
+  if (!vid) { el.innerHTML = '<div class="empty">Select a vendor to see their payment history.</div>'; return; }
+  const vps = VENDOR_PAYMENTS.filter(vp => vp.vendorId === vid);
+  if (!vps.length) { el.innerHTML = '<div class="empty">No payment records for this vendor yet.</div>'; return; }
+  let totalPaid=0, totalContract=0, totalRet=0;
+  const rows = vps.map(vp => {
+    const pr = vendorPaymentProgress(vp);
+    totalPaid+=pr.paid; totalContract+=pr.total; totalRet+=vp.retention;
+    const pname = PROJECTS.find(p=>p.id===vp.projectId)?.name || vp.projectId;
+    return `<div style="border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px;background:var(--card)">
+      <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px">
+        <div><b style="font-size:15px">${esc(pname)}</b><div style="font-size:12px;color:#64748b">${esc(vp.projectId)} · ${esc(vp.terms)}</div></div>
+        <span class="pill ${vp.status==='In progress'?'amber':vp.status==='Awaiting payment'?'red':'green'}">${esc(vp.status)}</span>
+      </div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:6px">
+        <div><span style="font-size:11px;color:#64748b;text-transform:uppercase">Contract</span><div style="font-weight:800">${money(pr.total)}</div></div>
+        <div><span style="font-size:11px;color:#64748b;text-transform:uppercase">Paid</span><div style="font-weight:800;color:#15803d">${money(pr.paid)}</div></div>
+        <div><span style="font-size:11px;color:#64748b;text-transform:uppercase">Progress</span><div style="font-weight:800">${pr.pct}%</div></div>
+      </div>
+      <div style="height:8px;background:#eee;border-radius:99px;overflow:hidden"><div style="height:8px;width:${pr.pct}%;background:${pr.pct>=100?'#16a34a':'#2563eb'};border-radius:99px"></div></div>
+    </div>`;
+  }).join('');
+  el.innerHTML = `<div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:14px">
+      <div class="metric-card"><span>Total Contracts</span><b>${money(totalContract)}</b></div>
+      <div class="metric-card"><span>Total Paid</span><b>${money(totalPaid)}</b></div>
+      <div class="metric-card"><span>Overall Progress</span><b>${totalContract?Math.round(totalPaid/totalContract*100):0}%</b></div>
+      <div class="metric-card"><span>Retention Held</span><b>${money(totalRet)}</b></div>
+    </div>${rows}`;
 }
 
 /* ============================================================
@@ -1977,6 +2014,179 @@ function renderCAGantt(p){
 }
 
 /* ============================================================
+   FIRST-RUN GUIDED TOUR (coach marks)
+   A short per-portal tour on first visit — addresses the
+   "WhatsApp habit" UX challenge with simple onboarding.
+   ============================================================ */
+const TOUR_KEY = 'zcc.tour.v1';
+function tourSeen(){ try{ return localStorage.getItem(TOUR_KEY)==='1'; }catch(e){ return true; } }
+function markTourSeen(){ try{ localStorage.setItem(TOUR_KEY,'1'); }catch(e){} }
+const TOURS = {
+  'cc': [
+    { sel:'.zcc-page-head h1', tip:'Welcome to the Command Center — the executive view of every project.' },
+    { sel:'.kpis', tip:'Portfolio KPIs at a glance: active projects, value, progress, delays.' },
+    { sel:'.section-head h2', tip:'Projects, Documents, Progress, Risks, Payments and more live in the sidebar.' },
+    { sel:'#closeArchivePanel', tip:'Close a completed project to move it to the archive.' }
+  ],
+  'staff': [
+    { sel:'.staff-hero-card', tip:'This is your Staff Workspace — your tasks, photos and profile.' },
+    { sel:'.stat-grid', tip:'Track your assigned, signed-off and pending tasks here.' },
+    { sel:'.card', tip:'Upload and sign off your work here.' }
+  ],
+  'contract': [
+    { sel:'.zcc-page-head h1', tip:'Welcome to the Contract Portal — track government files through every office.' },
+    { sel:'#contractFlow', tip:'The approval chain from Procurement to the Governor.' }
+  ],
+  'accounts': [
+    { sel:'.zcc-page-head h1', tip:'Welcome to the Accounts Portal — payments, retention and collections.' },
+    { sel:'#acctKpis', tip:'Certified vs paid vs outstanding across the portfolio.' }
+  ]
+};
+function startTour(app){
+  const steps = TOURS[app] || TOURS['cc']; if (!steps.length) return;
+  let i = 0;
+  const overlay = document.createElement('div');
+  overlay.className = 'tour-overlay';
+  const card = document.createElement('div');
+  card.className = 'tour-card';
+  card.innerHTML = `<div class="tour-step">Step <span class="tour-i">1</span>/<span class="tour-n">${steps.length}</span></div><div class="tour-text"></div><div class="tour-actions"><button class="tour-skip">Skip</button><button class="tour-next">Next</button></div>`;
+  document.body.appendChild(overlay);
+  document.body.appendChild(card);
+  const text = card.querySelector('.tour-text'), iEl = card.querySelector('.tour-i'),
+    nEl = card.querySelector('.tour-n'), next = card.querySelector('.tour-next'),
+    skip = card.querySelector('.tour-skip');
+  function place(){
+    const st = steps[i], target = document.querySelector(st.sel);
+    if (target) {
+      const r = target.getBoundingClientRect();
+      overlay.className = 'tour-overlay show';
+      // highlight target with a ring
+      document.querySelectorAll('.tour-highlight').forEach(h=>h.remove());
+      const hl = document.createElement('div'); hl.className='tour-highlight';
+      hl.style.top = r.top+'px'; hl.style.left = r.left+'px';
+      hl.style.width = r.width+'px'; hl.style.height = r.height+'px';
+      document.body.appendChild(hl);
+      // position card
+      const below = r.bottom + 14;
+      card.style.top = (below < window.innerHeight - 140 ? below : Math.max(10, r.top - 130)) + 'px';
+      card.style.left = Math.min(Math.max(10, r.left), window.innerWidth - 340) + 'px';
+      card.style.display='block';
+    } else { card.style.display='none'; }
+    text.textContent = st.tip;
+    iEl.textContent = (i+1);
+  }
+  function step(n){
+    i = n;
+    if (i >= steps.length) { dismiss(); markTourSeen(); return; }
+    place();
+  }
+  function dismiss(){ overlay.classList.remove('show'); card.remove(); overlay.remove(); document.querySelectorAll('.tour-highlight').forEach(h=>h.remove()); }
+  next.onclick = ()=>step(i+1);
+  skip.onclick = ()=>{ dismiss(); markTourSeen(); };
+  place();
+}
+function maybeTour(app){
+  if (tourSeen()) return;
+  if (document.body.dataset.public === '1') return;
+  setTimeout(()=>startTour(app), 900);
+}
+
+/* ============================================================
+   VENDOR PAYMENTS — per-project vendor payment progress
+   ============================================================ */
+function vendorPaymentsFor(projectId){
+  return VENDOR_PAYMENTS.filter(vp => vp.projectId === projectId);
+}
+function vendorPaymentProgress(vp){
+  const total = vp.contractValue;
+  const paid = vp.installments.reduce((a,i)=>a+(i.paid||0),0);
+  const pct = total ? Math.round(paid/total*100) : 0;
+  return { total, paid, pct };
+}
+function vendorPaymentsCards(vps){
+  return vps.map(vp => {
+    const { total, paid, pct } = vendorPaymentProgress(vp);
+    const due = total - paid;
+    const rows = vp.installments.map(i =>
+      `<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px dashed var(--line);font-size:13px">
+        <span style="flex:1"><b>${i.no}.</b> ${esc(i.label)}</span>
+        <span style="color:#555;min-width:90px;text-align:right">${money(i.amount)}</span>
+        <span class="pill ${i.status==='Paid'?'green':i.status==='Awaiting'?'amber':'grey'}" style="min-width:70px;text-align:center;font-size:11px">${esc(i.status)}</span>
+        <span style="color:#64748b;font-size:11px;min-width:70px;text-align:right">${esc(i.date)}</span>
+      </div>`).join('');
+    return `<div style="border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:14px;background:var(--card)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:8px">
+        <div><b style="font-size:15px">${esc(vp.vendor)}</b><div style="font-size:12px;color:#64748b">${esc(vp.terms)}</div></div>
+        <div style="text-align:right"><span class="pill ${vp.status==='In progress'?'amber':vp.status==='Awaiting payment'?'red':'green'}">${esc(vp.status)}</span></div>
+      </div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:10px">
+        <div><span style="font-size:11px;color:#64748b;text-transform:uppercase">Contract</span><div style="font-weight:800">${money(total)}</div></div>
+        <div><span style="font-size:11px;color:#64748b;text-transform:uppercase">Paid</span><div style="font-weight:800;color:#15803d">${money(paid)}</div></div>
+        <div><span style="font-size:11px;color:#64748b;text-transform:uppercase">Due</span><div style="font-weight:800;color:#b91c1c">${money(due)}</div></div>
+        <div><span style="font-size:11px;color:#64748b;text-transform:uppercase">Retention</span><div style="font-weight:800">${money(vp.retention)}</div></div>
+      </div>
+      <div style="height:10px;background:#eee;border-radius:99px;overflow:hidden;margin-bottom:10px"><div class="an-fill" style="height:10px;width:${pct}%;background:${pct>=100?'#16a34a':'#2563eb'};border-radius:99px"></div></div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:#64748b;margin-bottom:6px"><span>Payment progress</span><b>${pct}%</b></div>
+      ${rows}
+      <div style="margin-top:8px;font-size:12px;color:#64748b"><b>Documents/evidence:</b> ${esc((vp.docs||[]).join(' · '))}</div>
+    </div>`;
+  }).join('');
+}
+function renderVendorPayments(){
+  const el = $('vendorPayments'); if (!el) return;
+  const pid = $('vpProject')?.value || (PROJECTS[0]&&PROJECTS[0].id);
+  const vps = vendorPaymentsFor(pid);
+  el.innerHTML = vps.length ? vendorPaymentsCards(vps) : '<div class="empty">No vendor payments recorded for this project.</div>';
+  animateBars(el);
+}
+function fillVpProjects(){
+  const sel = $('vpProject'); if (!sel) return;
+  sel.innerHTML = PROJECTS.map(p=>`<option value="${esc(p.id)}">${esc(p.id)} · ${esc(p.name)}</option>`).join('');
+  if (sel.options.length) sel.value = sel.options[0].value;
+  if (sel.onchange) sel.onchange = renderVendorPayments;
+}
+/* init the record-vendor-payment form */
+function initVendorPayForm(){
+  const pSel = $('vpayProject'), vSel = $('vpayVendor');
+  if (pSel) {
+    pSel.innerHTML = PROJECTS.map(p=>`<option value="${esc(p.id)}">${esc(p.id)} · ${esc(p.name)}</option>`).join('');
+    pSel.onchange = () => {
+      const pid = pSel.value;
+      if (vSel) {
+        const vps = VENDOR_PAYMENTS.filter(vp=>vp.projectId===pid);
+        const vids = [...new Set(vps.map(vp=>vp.vendorId))];
+        vSel.innerHTML = '<option value="">Select vendor…</option>' +
+          vids.map(vid => { const v=VENDORS.find(x=>x.id===vid); return `<option value="${esc(vid)}">${esc(v?v.name:vid)}</option>`; }).join('');
+      }
+    };
+  }
+}
+function recordVendorPayment(){
+  const pid=$('vpayProject')?.value, vid=$('vpayVendor')?.value,
+    label=$('vpayLabel')?.value, amt=Number($('vpayAmount')?.value||0), note=$('vpayNote')?.value||'';
+  const err=$('vpayMsg');
+  if(!pid||!vid||!label||!(amt>0)){ if(err)err.innerHTML='<span class="err">Complete project, vendor, installment and amount.</span>'; return; }
+  // find the vendor-payment record; if none, create one
+  let vp = VENDOR_PAYMENTS.find(x=>x.projectId===pid && x.vendorId===vid);
+  if(!vp){
+    const v=VENDORS.find(x=>x.id===vid);
+    vp={ id:'VP-'+String(VENDOR_PAYMENTS.length+1).padStart(3,'0'), projectId:pid, vendorId:vid, vendor:v?v.name:vid,
+      contractValue:0, terms:'Custom', status:'In progress', installments:[], retention:0, docs:[] };
+    VENDOR_PAYMENTS.push(vp);
+  }
+  const next=vp.installments.length+1;
+  vp.installments.push({no:next,label:label,amount:amt,paid:amt,date:todayStr(),status:'Paid'});
+  if(note) vp.docs.push(note);
+  vp.status = vp.installments.reduce((a,i)=>a+i.paid,0) >= vp.contractValue && vp.contractValue>0 ? 'Complete' : 'In progress';
+  ZCC.snapshot(); ZCC.logAudit(whoami(),'VENDOR_PAYMENT',`${vp.vendor} · ${pid} · ${label} ${money(amt)}`);
+  if(err)err.innerHTML=`<span style="color:#16a34a">✔ Payment recorded — ${esc(label)} ${money(amt)} for ${esc(vp.vendor)}.</span>`;
+  toast('Vendor payment recorded: '+vp.vendor);
+  renderVendorPayments();
+  const vSel=$('vpayVendor'); if(vSel) vSel.onchange && vSel.onchange();
+  $('vpayLabel').value='';$('vpayAmount').value='';$('vpayNote').value='';
+}
+
+/* ============================================================
    LOGIN (00_Login.html)
    ============================================================ */
 function attemptLogin() {
@@ -2113,7 +2323,7 @@ function boot() {
       fillProjectOptions('mvProject'); renderFileTracking(); bindCC(); break;
     /* ---- Accounts Portal ---- */
     case 'accounts-dash':
-      fillProjectOptions('payProject'); renderAccountsDash(); bindCC(); break;
+      fillProjectOptions('payProject'); renderAccountsDash(); fillVpProjects(); renderVendorPayments(); initVendorPayForm(); bindCC(); break;
     case 'accounts-ret':
       renderRetentionRegister(); bindCC(); break;
     /* ---- Admin Console ---- */
@@ -2124,6 +2334,7 @@ function boot() {
   /* entrances play only during the initial render window */
   setTimeout(() => { ANIMATE_INIT = false; }, 1600);
   setTimeout(initScrollReveal, 200);
+  maybeTour(app);
 }
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);

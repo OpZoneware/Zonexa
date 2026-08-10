@@ -440,7 +440,20 @@ const VENDORS = [
   { id:'VND-004', name:'SignalTech Systems Ltd', category:'Traffic Systems', phone:'0805 444 5566', trusted:true, rating:5, projects:['ZW-005'], note:'Traffic light partner; strong reliability.' },
   { id:'VND-005', name:'BrightLine Road Markings Ltd', category:'Road Marking', phone:'0806 555 6677', trusted:false, rating:3, projects:['ZW-006'], note:'Line marking vendor.' },
   { id:'VND-006', name:'KerbWorks Infrastructure Ltd', category:'Road Infrastructure', phone:'0807 666 7788', trusted:false, rating:3, projects:['ZW-007'], note:'Median kerb vendor.' },
-  { id:'VND-007', name:'MetroBuild Rehabilitation Services', category:'Rehabilitation', phone:'0808 777 8899', trusted:false, rating:3, projects:['ZW-003'], note:'Classroom rehabilitation partner.' }
+  { id:'VND-007', name:'MetroBuild Rehabilitation Services', category:'Rehabilitation', phone:'0808 777 8899', trusted:false, rating:3, projects:['ZW-003'], note:'Classroom rehabilitation partner.' },
+  { id:'VND-008', name:'Zonecare Facility Operations Team', category:'Facility Management', phone:'0809 888 9900', trusted:true, rating:4, projects:['ZW-004'], note:'In-house FM team for the bus terminal.' },
+  { id:'VND-009', name:'Apex Steel & Reinforcement', category:'Steel & Concrete', phone:'0810 999 0011', trusted:false, rating:3, projects:['ZW-001'], note:'Steel and rebar supplier.' },
+  { id:'VND-010', name:'City Electrical Contractors', category:'Electrical', phone:'0811 101 1122', trusted:false, rating:4, projects:['ZW-002','ZW-005'], note:'Electrical installation subcontractor.' },
+  { id:'VND-011', name:'Hydro Plumbing & Drainage', category:'Plumbing', phone:'0812 202 2233', trusted:false, rating:3, projects:['ZW-003'], note:'Plumbing and drainage works.' },
+  { id:'VND-012', name:'SecureFM Security Services', category:'Security', phone:'0813 303 3344', trusted:true, rating:4, projects:['ZW-004'], note:'Site security for the terminal.' },
+  { id:'VND-013', name:'GridWorks Solar & Lighting', category:'Solar & Lighting', phone:'0814 404 4455', trusted:false, rating:3, projects:['ZW-005'], note:'Solar and lighting subcontractor.' },
+  { id:'VND-014', name:'AsphaltPlus Road Solutions', category:'Asphalt', phone:'0815 505 5566', trusted:false, rating:3, projects:['ZW-006'], note:'Asphalt and surface works.' },
+  { id:'VND-015', name:'CastMasters Precast', category:'Precast Concrete', phone:'0816 606 6677', trusted:false, rating:3, projects:['ZW-007'], note:'Precast kerb units supplier.' },
+  { id:'VND-016', name:'OnPoint Survey & Geotech', category:'Survey', phone:'0817 707 7788', trusted:false, rating:3, projects:['ZW-002'], note:'Site survey and geotechnical.' },
+  { id:'VND-017', name:'RoofRight Contracting', category:'Roofing', phone:'0818 808 8899', trusted:false, rating:3, projects:['ZW-001','ZW-003'], note:'Roofing subcontractor.' },
+  { id:'VND-018', name:'Terminal Care Cleaning Services', category:'Cleaning / Janitorial', phone:'0819 909 9900', trusted:false, rating:3, projects:['ZW-004'], note:'Cleaning and janitorial for the terminal.' },
+  { id:'VND-019', name:'LineMark Paint & Materials Supply', category:'Materials Supply', phone:'0820 010 0011', trusted:false, rating:3, projects:['ZW-006'], note:'Road-marking paint and materials.' },
+  { id:'VND-020', name:'SignWorks Fabrication', category:'Signage Fabrication', phone:'0821 111 1122', trusted:false, rating:3, projects:['ZW-007'], note:'Signage fabrication and installation.' }
 ];
 
 /* ============================================================
@@ -557,3 +570,195 @@ const SCHEDULE_DATA = {
       { name:'Handover',     bS:75,bE:90, aS:78,aE:100 }
   ]}
 };
+
+/* ============================================================
+   Zonexa v1.0 — VENDOR PAYMENTS PER PROJECT
+   Each project can have up to ~5 vendors, each with their own
+   payment terms. Some paid once, some in installments (depending
+   on relationship / milestone / claim). Tracks payment progress,
+   retention, and documents/evidence.
+   ============================================================ */
+const VENDOR_PAYMENTS = [
+  // ZW-001 School for the Blind — 2 vendors
+  { id:'VP-001', projectId:'ZW-001', vendorId:'VND-001', vendor:'Landmark Civil Works Ltd', contractValue:520000000,
+    terms:'Installments — milestone based (foundation, structure, finishing)',
+    status:'In progress',
+    installments:[
+      { no:1, label:'Mobilization advance', amount:156000000, paid:156000000, date:'18-Jun-2026', status:'Paid' },
+      { no:2, label:'Foundation complete', amount:130000000, paid:130000000, date:'15-Jul-2026', status:'Paid' },
+      { no:3, label:'Structure complete', amount:150000000, paid:0, date:'—', status:'Awaiting' },
+      { no:4, label:'Final + retention (5%)', amount:84000000, paid:0, date:'—', status:'Awaiting' }
+    ], retention:26000000, docs:['Vendor invoice #2214','Payment receipt'] },
+  { id:'VP-002', projectId:'ZW-001', vendorId:'VND-002', vendor:'Prime M&E Services', contractValue:180000000,
+    terms:'Installments — M&E progress claims',
+    status:'In progress',
+    installments:[
+      { no:1, label:'Mobilization', amount:54000000, paid:54000000, date:'20-Jun-2026', status:'Paid' },
+      { no:2, label:'M&E first claim', amount:70000000, paid:70000000, date:'24-Jul-2026', status:'Paid' },
+      { no:3, label:'Completion + retention', amount:56000000, paid:0, date:'—', status:'Awaiting' }
+    ], retention:9000000, docs:['M&E claim form'] },
+
+  // ZW-002 Shagamu — 1 vendor
+  { id:'VP-003', projectId:'ZW-002', vendorId:'VND-003', vendor:'BuildRight Contractors Ltd', contractValue:380000000,
+    terms:'Paid once on completion (single payment)',
+    status:'Awaiting payment',
+    installments:[
+      { no:1, label:'Full contract on completion', amount:380000000, paid:0, date:'—', status:'Awaiting' }
+    ], retention:19000000, docs:['Shagamu completion claim'] },
+
+  // ZW-005 Traffic Lights — 1 vendor, paid in installments
+  { id:'VP-004', projectId:'ZW-005', vendorId:'VND-004', vendor:'SignalTech Systems Ltd', contractValue:340000000,
+    terms:'Installments — per junction completion',
+    status:'In progress',
+    installments:[
+      { no:1, label:'Mobilization', amount:102000000, paid:102000000, date:'12-Jul-2026', status:'Paid' },
+      { no:2, label:'Junctions 1-3 installed', amount:120000000, paid:120000000, date:'27-Jul-2026', status:'Paid' },
+      { no:3, label:'Junctions 4-6 + testing', amount:118000000, paid:0, date:'—', status:'Awaiting' }
+    ], retention:17000000, docs:['Testing checklist','Junction 3 evidence'] },
+
+  // ZW-006 Road Marking — 1 vendor, paid once
+  { id:'VP-005', projectId:'ZW-006', vendorId:'VND-005', vendor:'BrightLine Road Markings Ltd', contractValue:160000000,
+    terms:'Paid once on completion',
+    status:'Awaiting payment',
+    installments:[
+      { no:1, label:'Full contract on completion', amount:160000000, paid:0, date:'—', status:'Awaiting' }
+    ], retention:8000000, docs:['Executed sections register'] },
+  { id:'VP-006', projectId:'ZW-003', vendorId:'VND-007', vendor:'MetroBuild Rehabilitation Services', contractValue:220000000,
+    terms:'Installments — per classroom block completion',
+    status:'In progress',
+    installments:[
+      { no:1, label:'Mobilization', amount:66000000, paid:66000000, date:'12-Jul-2026', status:'Paid' },
+      { no:2, label:'Classrooms 1-6 complete', amount:80000000, paid:80000000, date:'28-Jul-2026', status:'Paid' },
+      { no:3, label:'Remaining blocks + finishing', amount:74000000, paid:0, date:'—', status:'Awaiting' }
+    ], retention:11000000, docs:['Classroom completion list'] },
+  { id:'VP-007', projectId:'ZW-004', vendorId:'VND-008', vendor:'Zonecare Facility Operations Team', contractValue:80000000,
+    terms:'Monthly — facility management retainer',
+    status:'In progress',
+    installments:[
+      { no:1, label:'July FM retainer', amount:4000000, paid:4000000, date:'28-Jul-2026', status:'Paid' },
+      { no:2, label:'August FM retainer', amount:4000000, paid:4000000, date:'—', status:'Awaiting' }
+    ], retention:4000000, docs:['FM weekly report','Monthly invoice'] },
+  { id:'VP-008', projectId:'ZW-007', vendorId:'VND-006', vendor:'KerbWorks Infrastructure Ltd', contractValue:200000000,
+    terms:'Installments — per section delivered',
+    status:'In progress',
+    installments:[
+      { no:1, label:'Mobilization', amount:60000000, paid:60000000, date:'14-Jul-2026', status:'Paid' },
+      { no:2, label:'Section 1-2 kerb work', amount:90000000, paid:0, date:'—', status:'Awaiting' },
+      { no:3, label:'Completion + retention', amount:50000000, paid:0, date:'—', status:'Awaiting' }
+    ], retention:10000000, docs:['Executed sections register'] },
+  { id:'VP-009', projectId:'ZW-001', vendorId:'VND-009', vendor:'Apex Steel & Reinforcement', contractValue:90000000,
+    terms:'Paid once on delivery',
+    status:'Paid',
+    installments:[ { no:1, label:'Full steel supply on delivery', amount:90000000, paid:90000000, date:'20-Jul-2026', status:'Paid' } ],
+    retention:4500000, docs:['Steel delivery note'] },
+  { id:'VP-010', projectId:'ZW-001', vendorId:'VND-017', vendor:'RoofRight Contracting', contractValue:70000000,
+    terms:'Installments — per roof bay',
+    status:'In progress',
+    installments:[
+      { no:1, label:'Materials mobilization', amount:21000000, paid:21000000, date:'18-Jul-2026', status:'Paid' },
+      { no:2, label:'Roof bays 1-2', amount:30000000, paid:0, date:'—', status:'Awaiting' },
+      { no:3, label:'Completion', amount:19000000, paid:0, date:'—', status:'Awaiting' }
+    ], retention:3500000, docs:['Roofing invoice'] },
+  { id:'VP-011', projectId:'ZW-002', vendorId:'VND-010', vendor:'City Electrical Contractors', contractValue:65000000,
+    terms:'Installments — electrical works',
+    status:'In progress',
+    installments:[
+      { no:1, label:'Mobilization', amount:20000000, paid:20000000, date:'16-Jul-2026', status:'Paid' },
+      { no:2, label:'Wiring + panels', amount:45000000, paid:0, date:'—', status:'Awaiting' }
+    ], retention:3250000, docs:['Electrical claim'] },
+  { id:'VP-012', projectId:'ZW-002', vendorId:'VND-016', vendor:'OnPoint Survey & Geotech', contractValue:25000000,
+    terms:'Paid once on completion',
+    status:'Paid',
+    installments:[ { no:1, label:'Full survey on completion', amount:25000000, paid:25000000, date:'12-Jul-2026', status:'Paid' } ],
+    retention:1250000, docs:['Geotech report'] },
+  { id:'VP-013', projectId:'ZW-003', vendorId:'VND-011', vendor:'Hydro Plumbing & Drainage', contractValue:55000000,
+    terms:'Installments — plumbing works',
+    status:'In progress',
+    installments:[
+      { no:1, label:'Mobilization', amount:16500000, paid:16500000, date:'15-Jul-2026', status:'Paid' },
+      { no:2, label:'Plumbing fit-out', amount:38500000, paid:0, date:'—', status:'Awaiting' }
+    ], retention:2750000, docs:['Plumbing claim'] },
+  { id:'VP-014', projectId:'ZW-003', vendorId:'VND-017', vendor:'RoofRight Contracting', contractValue:60000000,
+    terms:'Paid once on completion',
+    status:'Awaiting payment',
+    installments:[ { no:1, label:'Full roofing on completion', amount:60000000, paid:0, date:'—', status:'Awaiting' } ],
+    retention:3000000, docs:['Roofing completion'] },
+  { id:'VP-015', projectId:'ZW-004', vendorId:'VND-012', vendor:'SecureFM Security Services', contractValue:36000000,
+    terms:'Monthly — security retainer',
+    status:'In progress',
+    installments:[
+      { no:1, label:'July security', amount:3000000, paid:3000000, date:'30-Jul-2026', status:'Paid' },
+      { no:2, label:'August security', amount:3000000, paid:0, date:'—', status:'Awaiting' }
+    ], retention:0, docs:['Security roster'] },
+  { id:'VP-016', projectId:'ZW-004', vendorId:'VND-008', vendor:'Zonecare Facility Operations Team', contractValue:40000000,
+    terms:'Paid once on completion of phase',
+    status:'In progress',
+    installments:[
+      { no:1, label:'Phase 1 FM services', amount:20000000, paid:20000000, date:'28-Jul-2026', status:'Paid' },
+      { no:2, label:'Phase 2 FM services', amount:20000000, paid:0, date:'—', status:'Awaiting' }
+    ], retention:2000000, docs:['FM report'] },
+  { id:'VP-017', projectId:'ZW-005', vendorId:'VND-010', vendor:'City Electrical Contractors', contractValue:70000000,
+    terms:'Installments — signal power works',
+    status:'In progress',
+    installments:[
+      { no:1, label:'Mobilization', amount:21000000, paid:21000000, date:'17-Jul-2026', status:'Paid' },
+      { no:2, label:'Power supply install', amount:49000000, paid:0, date:'—', status:'Awaiting' }
+    ], retention:3500000, docs:['Power install claim'] },
+  { id:'VP-018', projectId:'ZW-005', vendorId:'VND-013', vendor:'GridWorks Solar & Lighting', contractValue:55000000,
+    terms:'Installments — solar lighting',
+    status:'In progress',
+    installments:[
+      { no:1, label:'Mobilization', amount:16500000, paid:16500000, date:'19-Jul-2026', status:'Paid' },
+      { no:2, label:'Solar install', amount:38500000, paid:0, date:'—', status:'Awaiting' }
+    ], retention:2750000, docs:['Solar claim'] },
+  { id:'VP-019', projectId:'ZW-006', vendorId:'VND-014', vendor:'AsphaltPlus Road Solutions', contractValue:60000000,
+    terms:'Installments — per road section',
+    status:'In progress',
+    installments:[
+      { no:1, label:'Mobilization', amount:18000000, paid:18000000, date:'16-Jul-2026', status:'Paid' },
+      { no:2, label:'Section A asphalt', amount:42000000, paid:0, date:'—', status:'Awaiting' }
+    ], retention:3000000, docs:['Asphalt claim'] },
+  { id:'VP-020', projectId:'ZW-007', vendorId:'VND-015', vendor:'CastMasters Precast', contractValue:45000000,
+    terms:'Installments — per kerb unit batch',
+    status:'In progress',
+    installments:[
+      { no:1, label:'First batch', amount:20000000, paid:20000000, date:'15-Jul-2026', status:'Paid' },
+      { no:2, label:'Second batch', amount:25000000, paid:0, date:'—', status:'Awaiting' }
+    ], retention:2250000, docs:['Precast delivery'] },
+  { id:'VP-021', projectId:'ZW-004', vendorId:'VND-008', vendor:'Zonecare Facility Operations Team', contractValue:50000000,
+    terms:'Installments — terminal works',
+    status:'In progress',
+    installments:[
+      { no:1, label:'Mobilization', amount:15000000, paid:15000000, date:'20-Jul-2026', status:'Paid' },
+      { no:2, label:'Works completion', amount:35000000, paid:0, date:'—', status:'Awaiting' }
+    ], retention:2500000, docs:['Terminal works invoice'] },
+  { id:'VP-022', projectId:'ZW-006', vendorId:'VND-014', vendor:'AsphaltPlus Road Solutions', contractValue:70000000,
+    terms:'Paid once on completion',
+    status:'Awaiting payment',
+    installments:[ { no:1, label:'Full asphalt works', amount:70000000, paid:0, date:'—', status:'Awaiting' } ],
+    retention:3500000, docs:['Asphalt completion'] },
+  { id:'VP-023', projectId:'ZW-007', vendorId:'VND-006', vendor:'KerbWorks Infrastructure Ltd', contractValue:60000000,
+    terms:'Paid once on completion',
+    status:'Awaiting payment',
+    installments:[ { no:1, label:'Full kerb completion', amount:60000000, paid:0, date:'—', status:'Awaiting' } ],
+    retention:3000000, docs:['Kerb completion'] },
+  { id:'VP-024', projectId:'ZW-004', vendorId:'VND-018', vendor:'Terminal Care Cleaning Services', contractValue:20000000,
+    terms:'Monthly — cleaning retainer',
+    status:'In progress',
+    installments:[
+      { no:1, label:'July cleaning', amount:2000000, paid:2000000, date:'29-Jul-2026', status:'Paid' },
+      { no:2, label:'August cleaning', amount:2000000, paid:0, date:'—', status:'Awaiting' }
+    ], retention:0, docs:['Cleaning roster'] },
+  { id:'VP-025', projectId:'ZW-006', vendorId:'VND-019', vendor:'LineMark Paint & Materials Supply', contractValue:30000000,
+    terms:'Paid once on delivery',
+    status:'Paid',
+    installments:[ { no:1, label:'Full paint supply', amount:30000000, paid:30000000, date:'22-Jul-2026', status:'Paid' } ],
+    retention:0, docs:['Paint delivery note'] },
+  { id:'VP-026', projectId:'ZW-007', vendorId:'VND-020', vendor:'SignWorks Fabrication', contractValue:28000000,
+    terms:'Installments — per signage batch',
+    status:'In progress',
+    installments:[
+      { no:1, label:'First signage batch', amount:12000000, paid:12000000, date:'18-Jul-2026', status:'Paid' },
+      { no:2, label:'Second signage batch', amount:16000000, paid:0, date:'—', status:'Awaiting' }
+    ], retention:1400000, docs:['Signage invoice'] }
+];
