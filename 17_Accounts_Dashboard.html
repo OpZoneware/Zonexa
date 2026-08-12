@@ -63,8 +63,27 @@
       <div class="upd-row"><button class="upd-btn" onclick="recordVendorPayment()">Record Payment</button><span class="upd-note" id="vpayMsg"></span></div>
     </div>
   </section>
+
+  <section class="section">
+    <div class="section-head"><div><h2>Register Document</h2><p>Raise a controlled document (invoice support, certification, retention release, statement of account) against a project. Written to the shared document register — it appears in the Command Center and the MD's view automatically.</p></div><span class="pill blue">Accounts entry</span></div>
+    <div class="panel upd">
+      <div class="upd-grid" style="grid-template-columns:repeat(auto-fit,minmax(190px,1fr))">
+        <div class="upd-field"><label>Project</label><select id="acctDocProject"></select></div>
+        <div class="upd-field"><label>Type</label><select id="acctDocType"><option>Invoice Support</option><option>Payment Certification</option><option>Retention Release</option><option>Statement of Account</option><option>Bank Confirmation</option><option>Reconciliation Note</option><option>Other</option></select></div>
+        <div class="upd-field"><label>Title</label><input type="text" id="acctDocTitle" placeholder="e.g. Invoice #2214 support pack" /></div>
+        <div class="upd-field"><label>Note / File ref</label><input type="text" id="acctDocNote" placeholder="Optional reference" /></div>
+      </div>
+      <div class="upd-row"><button class="upd-btn" onclick="acctAddDoc()">Register Document</button><span class="upd-note" id="acctDocMsg"></span></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-head"><div><h2>Document Register</h2><p>Most recent controlled documents, newest first. Documents are immutable to non-MD users — only the Managing Director can edit or delete.</p></div><span class="pill blue">Live</span></div>
+    <div class="panel" style="padding:0;overflow:hidden" id="docUploads"></div>
+  </section>
 </main>
 <script src="assets/zcc-data.js"></script>
+<script src="assets/zcc-sheet.js"></script>
 <script src="assets/zcc-app.js"></script>
 </body>
 </html>

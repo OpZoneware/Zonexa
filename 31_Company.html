@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Company · Zonexa</title>
+<link rel="stylesheet" href="assets/zcc.css">
+</head>
+<body data-app="cc" data-page="company">
+<main class="main">
+  <section class="zcc-page-head">
+    <div>
+      <div class="zcc-eyebrow"><a href="01_Dashboard.html" style="color:inherit;text-decoration:none">← All Companies</a> · Zonexa v1.0</div>
+      <h1 id="companyTitle">Company</h1>
+      <p id="companySub">Loading…</p>
+    </div>
+    <span class="zcc-system-pill" id="companyPill">Company</span>
+  </section>
+
+  <section class="kpis" id="companyKpis" style="margin-bottom:18px"></section>
+
+  <section class="section" id="companyExec">
+    <div class="section-head"><div><h2>Overview</h2><p>Status, file hotspots, payments and compliance for this company.</p></div><span class="pill blue" id="companyScopeTag">Company View</span></div>
+    <div class="an-grid">
+      <div class="panel" style="padding:16px"><h3 style="margin-top:0;font-size:15px">Portfolio Health</h3><div id="execStatus"></div></div>
+      <div class="panel" style="padding:16px"><h3 style="margin-top:0;font-size:15px">File Bottlenecks</h3><div class="attention" style="grid-template-columns:1fr" id="execFiles"></div></div>
+      <div class="panel" style="padding:16px"><h3 style="margin-top:0;font-size:15px">Payments &amp; Collections</h3><div id="execPayments"></div></div>
+      <div class="panel" style="padding:16px"><h3 style="margin-top:0;font-size:15px">Compliance</h3><div id="execCompliance"></div></div>
+    </div>
+  </section>
+
+  <section class="section" id="companyProjects">
+    <div class="section-head"><div><h2>Active Projects</h2><p id="companyProjectsSub"></p></div></div>
+    <div class="grid" id="companyProjectGrid" style="margin-top:8px"></div>
+    <div id="companyCompleted" style="margin-top:18px"></div>
+  </section>
+
+  <section class="section" id="companyAttention">
+    <div class="panel">
+      <div class="section-head" style="margin-bottom:10px"><div><h2>Management Attention</h2><p>Projects requiring review.</p></div></div>
+      <div class="attention" id="companyAttentionList"></div>
+    </div>
+  </section>
+
+  <section class="section" id="companyUploads">
+    <div class="panel">
+      <div class="section-head" style="margin-bottom:10px"><div><h2>Recent Documents</h2><p>Uploaded for this company's projects.</p></div></div>
+      <div id="docUploads"></div>
+    </div>
+  </section>
+</main>
+<script src="assets/zcc-data.js"></script>
+<script src="assets/zcc-sheet.js"></script>
+<script src="assets/zcc-app.js"></script>
+</body>
+</html>

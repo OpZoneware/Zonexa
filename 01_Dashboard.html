@@ -16,6 +16,10 @@
     </div>
     <span class="zcc-system-pill">Live Operations View</span>
   </section>
+  <section class="section" id="companies">
+    <div class="section-head"><div><h2>Companies</h2><p>Select a company folder to open its main projects. All companies are shown below the summary.</p></div><button class="btn btn-ghost" id="allCompaniesBtn" onclick="clearCompany()" style="display:none;border:1px solid var(--line);background:var(--card);color:var(--foreground);padding:8px 14px;border-radius:999px;font-weight:800;cursor:pointer">← All Companies</button></div>
+    <div class="company-grid" id="companyGrid"></div>
+  </section>
   <section class="kpis" id="kpis"></section>
   <section class="panel" id="closeArchivePanel" style="display:none;margin-bottom:18px">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap">
@@ -25,7 +29,7 @@
       </div>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
         <select id="archiveProjectSelect" style="min-width:260px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg-2);color:var(--text);font-size:13px"></select>
-        <button class="btn btn-primary" onclick="archiveFromPortal()" style="padding:10px 18px">Close &amp; Archive →</button>
+        <button class="btn btn-primary" onclick="archiveFromPortal()" style="padding:7px 14px">Close &amp; Archive →</button>
       </div>
     </div>
   </section>
@@ -34,21 +38,16 @@
     <div class="an-grid">
       <div class="panel" style="padding:16px"><h3 style="margin-top:0;font-size:15px">Portfolio Health</h3><div id="execStatus"></div></div>
       <div class="panel" style="padding:16px"><h3 style="margin-top:0;font-size:15px">File Bottlenecks</h3><div class="attention" style="grid-template-columns:1fr" id="execFiles"></div></div>
+      <div class="panel" style="padding:16px"><h3 style="margin-top:0;font-size:15px">Payments &amp; Collections</h3><div id="execPayments"></div></div>
       <div class="panel" style="padding:16px"><h3 style="margin-top:0;font-size:15px">Spend Authority</h3><div id="execLimits"></div></div>
       <div class="panel" style="padding:16px"><h3 style="margin-top:0;font-size:15px">Compliance Countdown</h3><div id="execCompliance"></div></div>
     </div>
   </section>
-  <section class="section" id="portfolio">
-    <div class="section-head"><div><h2>Projects</h2><p>Open any project to view progress, file movement, issues, actions, and documents.</p></div><span class="pill blue">Executive View</span></div>
+  <section class="section" id="escalations">
     <div class="panel">
-      <div class="filters"><input id="search" placeholder="Search project, client, PM, vendor, issue..."/><select id="sector"><option value="">All Sectors</option></select><select id="client"><option value="">All Clients</option></select><select id="pm"><option value="">All PMs</option></select><select id="sort"><option value="priority">Sort: Priority</option><option value="delay">Sort: Delay</option><option value="progress">Sort: Progress</option><option value="file">Sort: Days in File Stage</option></select></div>
-      <div class="chips"><button class="chip active" data-status="">All</button><button class="chip" data-status="Green">Green</button><button class="chip" data-status="Amber">Amber</button><button class="chip" data-status="Red">Red</button><button class="chip" data-fresh="Stale">Stale Updates</button></div>
+      <div class="section-head" style="margin-bottom:10px"><div><h2>Needs Attention / Escalations</h2><p>Projects that need the MD's attention — escalations, overdue files, stale updates and critical issues.</p></div><span class="pill red" id="escalationCount"></span></div>
+      <div class="attention" id="attentionList"></div>
     </div>
-    <div id="projectSummary" style="margin-top:14px;font-size:13px;color:#475569"></div>
-    <div class="grid" id="projectGrid" style="margin-top:16px"></div><div class="empty" id="empty" style="display:none">No project matches the current filters.</div>
-  </section>
-  <section class="section" id="attention">
-    <div class="panel"><div class="section-head" style="margin-bottom:10px"><div><h2>Management Attention</h2><p>Projects requiring review because of delay, escalation or stale updates.</p></div></div><div class="attention" id="attentionList"></div></div>
   </section>
   <section class="section" id="approvals" style="display:none">
     <div class="panel">
@@ -64,6 +63,7 @@
   </section>
 </main>
 <script src="assets/zcc-data.js"></script>
+<script src="assets/zcc-sheet.js"></script>
 <script src="assets/zcc-app.js"></script>
 </body>
 </html>

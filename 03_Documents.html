@@ -21,11 +21,22 @@
     <div class="panel" style="padding:0;overflow:hidden"><table class="file-table" id="fileTable"></table></div>
   </section>
   <section class="section" id="register">
-    <div class="section-head"><div><h2>Document Register</h2><p>Every controlled document with type, owner, date and direct file access.</p></div></div>
+    <div class="section-head"><div><h2>Document Register</h2><p>Every controlled document with type, owner, date and direct file access.</p></div><span class="pill blue" style="white-space:nowrap">Controlled</span></div>
+
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+      <input type="search" id="docSearch" placeholder="Search documents… title, ID, type, stage, owner, project, client"
+        style="flex:1;min-width:280px;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--bg-2);color:var(--text);font-size:13px" />
+      <span class="pill blue" style="white-space:nowrap"><span id="docCount">0 documents</span></span>
+      <span class="pill blue" style="white-space:nowrap" title="Controlled documents are read-only to everyone except the Managing Director, who may edit or delete them. All changes are audited.">🔒 Immutable to non-MD</span>
+    </div>
+
+    <div class="panel upd" id="docEditor" style="display:none;margin-bottom:12px"></div>
+
     <div class="panel" style="padding:0;overflow:hidden" id="docRegister"></div>
   </section>
 </main>
 <script src="assets/zcc-data.js"></script>
+<script src="assets/zcc-sheet.js"></script>
 <script src="assets/zcc-app.js"></script>
 </body>
 </html>
