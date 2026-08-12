@@ -136,6 +136,7 @@ const NAV = {
       ['dashboard',  'Dashboard',   '01_Dashboard.html', 'home'],
       ['projects',   'Projects',    '02_Projects.html', 'folder'],
       ['documents',  'Documents',   '03_Documents.html', 'file'],
+      ['doc-manage', 'Document Mgmt', '32_Documents_Manage.html', 'file'],
       ['progress',   'Progress',    '04_Progress.html', 'chart'],
       ['risks',      'Risks',       '05_Risks.html', 'warn'],
       ['payments',   'Payments',    '06_Payments.html', 'cash'],
@@ -183,6 +184,21 @@ const NAV = {
     ]
   }
 };
+
+/* ---------- role-restricted pages ----------
+   Pages that only the listed roles may open (or even see in the
+   sidebar). buildShell hides the nav link and boot blocks direct
+   navigation for everyone else. */
+const PAGE_ACCESS = {
+  archive: ['MD', 'Contract Lead']   /* archive viewable by MD + Contract Lead */
+};
+
+/* Is the signed-in user the Managing Director? MD-only capabilities
+   (archive, controlled-document edit/delete) are gated on this. */
+function isMD(){ const u = ZCC.user(); return !!(u && u.role === 'MD'); }
+
+/* Live document-register search term (03_Documents) */
+let docSearch = '';
 
 /* ---------- shared shell ---------- */
 /* Which detail-drawer tabs (and therefore parameters) each portal may see.
@@ -249,6 +265,9 @@ function portalSwitcher(user, app) {
 function buildShell(user, app, page) {
   currentApp = app;
   const nav = NAV[app];
+  /* drop role-restricted links (e.g. the MD-only archive) for anyone
+     without the required role */
+  const links = nav.links.filter(([key]) => !PAGE_ACCESS[key] || (user && PAGE_ACCESS[key].includes(user.role)));
 
   const aside = document.createElement('aside');
   aside.className = 'sidebar';
@@ -256,7 +275,7 @@ function buildShell(user, app, page) {
   aside.innerHTML =
     `<div class="sidebar-brand"><img class="sidebar-logo" src="${LOGO}" alt="Zoneware"></div>` +
     `<nav class="sidebar-nav"><span class="sidebar-glider" id="sbGlider"></span>` +
-      nav.links.map(([key, label, href, ic]) =>
+      links.map(([key, label, href, ic]) =>
         `<a href="${href}" class="sidebar-link${key === page ? ' active' : ''}" data-page="${key}">${icon(ic)}<span>${label}</span></a>`).join('') +
     `</nav>` +
     (user ? `<div class="sidebar-user">
@@ -275,6 +294,19 @@ function buildShell(user, app, page) {
   topbar.innerHTML =
     `<img class="topbar-logo" src="${LOGO}" alt="Zoneware">` +
     `<span class="topbar-title">${nav.title}</span>` +
+    `<div class="topbar-search">
+       <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+       <input id="globalSearch" type="text" placeholder="Search projects, documents, companies…" autocomplete="off">
+       <div class="gsearch-results" id="gsearchResults"></div>
+     </div>` +
+    `<span class="topbar-spacer"></span>` +
+    `<div class="notif-wrap" id="notifWrap">
+       <button class="notif-bell" onclick="toggleNotifications(event)" aria-label="Notifications">
+         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+         <span class="notif-badge" id="notifBadge" style="display:none">0</span>
+       </button>
+       <div class="notif-menu" id="notifMenu"></div>
+     </div>` +
     `<button class="topbar-hamburger" id="hamburgerBtn" onclick="toggleSidebar()" aria-label="Menu">☰</button>`;
 
   const overlay = document.createElement('div');
@@ -296,6 +328,21 @@ function buildShell(user, app, page) {
       wrap.className = 'ph-actions';
       wrap.innerHTML = dd;
       ph.appendChild(wrap);
+    }
+  }
+
+  /* Company folder strip — injected on every operational page that does NOT
+     already have its own company section (login/report skipped). Gives
+     folder-first navigation no matter which portal/page you're on. */
+  const skipPages = ['login', 'report', 'company'];
+  if (!skipPages.includes(page) && !document.body.dataset.public && !document.getElementById('companyGrid')) {
+    const main = document.querySelector('main.main');
+    if (main) {
+      const cs = document.createElement('section');
+      cs.className = 'section company-strip';
+      cs.id = 'companyStrip';
+      cs.innerHTML = `<div class="section-head" style="margin-bottom:10px"><div><h2 style="font-size:20px">Companies</h2><p>Select a company folder to open its projects.</p></div></div><div class="company-grid" id="companyGrid"></div>`;
+      main.prepend(cs);
     }
   }
 
@@ -342,7 +389,7 @@ function initGlider() {
 /* ============================================================
    COMMAND CENTER — rendering
    ============================================================ */
-let state = { search: '', sector: '', client: '', pm: '', status: '', fresh: '', sort: 'priority' };
+let state = { search: '', sector: '', client: '', pm: '', company: '', status: '', fresh: '', sort: 'priority' };
 
 function kpiData() {
   const value = PROJECTS.reduce((a, p) => a + p.contractValue, 0),
@@ -371,7 +418,7 @@ function renderKpis() {
 
 function populate() {
   const uniq = a => [...new Set(a)].sort();
-  [['sector', uniq(PROJECTS.map(p => p.sector))], ['client', uniq(PROJECTS.map(p => p.client))], ['pm', uniq(PROJECTS.map(p => p.pm))]]
+  [['sector', uniq(PROJECTS.map(p => p.sector))], ['client', uniq(PROJECTS.map(p => p.client))], ['pm', uniq(PROJECTS.map(p => p.pm))], ['company', uniq(PROJECTS.map(p => p.company).filter(Boolean))]]
     .forEach(([id, vals]) => {
       const sel = $(id); if (!sel) return;
       vals.forEach(v => { const o = document.createElement('option'); o.value = v; o.textContent = v; sel.appendChild(o); });
@@ -384,6 +431,7 @@ function filtered() {
   if (state.sector) arr = arr.filter(p => p.sector === state.sector);
   if (state.client) arr = arr.filter(p => p.client === state.client);
   if (state.pm) arr = arr.filter(p => p.pm === state.pm);
+  if (state.company) arr = arr.filter(p => p.company === state.company);
   if (state.status) arr = arr.filter(p => p.status === state.status);
   if (state.fresh) arr = arr.filter(p => p.freshness === state.fresh);
   arr.sort((a, b) => {
@@ -396,7 +444,7 @@ function filtered() {
 }
 
 function card(p) {
-  return `<article class="project-card" onclick="openProject('${p.id}')"><div class="card-top"><span class="sector">${esc(p.sector)}</span><span class="pill status-pill ${cls(p.status)}">${p.status}</span></div><div class="card-body"><div class="title">${esc(p.name)}</div><div class="meta">${esc(p.id)} · ${esc(p.client)}<br>${esc(p.location)} · PM: ${esc(p.pm)}</div><div class="mini-stats"><div class="stat"><span>Value</span><b>${money(p.contractValue)}</b></div><div class="stat"><span>Delay</span><b>${p.delayDays}d</b></div><div class="stat"><span>File Stage</span><b>${p.daysInStage}d</b></div></div><div class="progress-meta"><span>Actual ${pct(p.actual)}</span><span>Plan ${pct(p.planned)}</span></div><div class="track"><div class="fill ${cls(p.status)}" style="width:${Math.min(100, p.actual)}%"></div><span class="mark" style="left:${Math.min(100, p.planned)}%"></span></div><div class="card-foot"><span class="pill ${cls(p.freshness)}">${p.freshness}</span><span class="open-link">Open details →</span></div></div></article>`;
+  return `<article class="project-card" onclick="openProject('${p.id}')"><div class="card-top"><span class="sector">${esc(p.sector)}</span><span class="pill status-pill ${cls(p.status)}">${p.status}</span></div><div class="card-body"><div class="title">${esc(p.name)}</div><div class="meta">${esc(p.id)} · ${esc(p.client)}<br>${esc(p.location)} · PM: ${esc(p.pm)}</div>${p.company?`<div style="font-size:11px;color:#555;margin-top:4px">🏢 <b>${esc(p.company)}</b></div>`:''}<div class="mini-stats"><div class="stat"><span>Value</span><b>${money(p.contractValue)}</b></div><div class="stat"><span>Delay</span><b>${p.delayDays}d</b></div><div class="stat"><span>File Stage</span><b>${p.daysInStage}d</b></div></div><div class="progress-meta"><span>Actual ${pct(p.actual)}</span><span>Plan ${pct(p.planned)}</span></div><div class="track"><div class="fill ${cls(p.status)}" style="width:${Math.min(100, p.actual)}%"></div><span class="mark" style="left:${Math.min(100, p.planned)}%"></span></div><div class="card-foot"><span class="pill ${cls(p.freshness)}">${p.freshness}</span><span class="open-link">Open details →</span></div></div></article>`;
 }
 
 function renderProjects() {
@@ -411,40 +459,490 @@ function renderProjects() {
     const g = arr.filter(p => p.status === 'Green').length,
       a = arr.filter(p => p.status === 'Amber').length,
       r = arr.filter(p => p.status === 'Red').length;
-    sum.innerHTML = `Showing <b>${arr.length}</b> of ${PROJECTS.length} projects &nbsp;·&nbsp; <span class="pill green">${g} Green</span> <span class="pill amber">${a} Amber</span> <span class="pill red">${r} Red</span>`;
+    sum.innerHTML = state.company
+      ? `Showing <b>${arr.length}</b> project${arr.length===1?'':'s'} for <b>${esc(state.company)}</b> &nbsp;·&nbsp; <span class="pill green">${g} Green</span> <span class="pill amber">${a} Amber</span> <span class="pill red">${r} Red</span>`
+      : `Showing <b>${arr.length}</b> of ${PROJECTS.length} projects &nbsp;·&nbsp; <span class="pill green">${g} Green</span> <span class="pill amber">${a} Amber</span> <span class="pill red">${r} Red</span>`;
   }
+  /* Company with no active jobs → show its completed work from the archive
+     (year-grouped) instead of a bare empty grid. */
+  if (state.company) {
+    const archived = ARCHIVE.concat(ZCC.archive()).filter(x => (x.company || '') === state.company);
+    if (!arr.length && archived.length && grid) {
+      const docLinks = x => (x.docs || []).map(f => `<a class="download-btn" href="${esc(f)}" target="_blank">Doc</a>`).join(' ');
+      const rows = archived.map(x => `<tr>
+        <td><b>${esc(x.name)}</b><br><span style="color:#64748b">${esc(x.id)} · ${esc(x.sector)}</span></td>
+        <td>${esc(x.client)}</td>
+        <td>${money(x.contractValue)}</td>
+        <td>${esc(x.year || '—')}</td>
+        <td>${esc(x.completed)}</td>
+        <td><span class="pill green">${esc(x.retentionReleased)}</span></td>
+        <td style="color:#64748b;font-size:12px">${esc(x.summary)}</td>
+        <td><div style="display:flex;gap:6px;flex-wrap:wrap">${docLinks(x)}</div></td>
+      </tr>`).join('');
+      grid.innerHTML = `<div class="empty" style="margin-bottom:14px;text-align:left"><b style="font-size:15px">${esc(state.company)} has no active projects.</b><br>All its jobs are completed and held in the archive below.</div>
+        <table class="file-table"><thead><tr><th>Project</th><th>Client</th><th>Value</th><th>Year</th><th>Completed</th><th>Retention</th><th>Summary</th><th>Documents</th></tr></thead><tbody>${rows}</tbody></table>`;
+    }
+  }
+  /* keep the company folder nav in sync with the active filter */
+  syncCompanyFolders();
+}
+
+/* Company folder navigation — folder-first landing.
+   Renders one folder per company (with project count, portfolio value
+   and status mix). Clicking a folder narrows the project grid to that
+   company; the folder highlights as active. */
+function renderCompanyFolders() {
+  const grid = $('companyGrid'); if (!grid) return;
+  /* Group ACTIVE projects by company; completed jobs live in the archive
+     (year-grouped). A company still appears if it has ANY active OR completed
+     work — so a company with only completed jobs is shown
+     with 0 active and its completed count. */
+  const archived = ARCHIVE.concat(ZCC.archive());
+  const activeByCompany = {};
+  PROJECTS.forEach(p => { const c = p.company || 'Unassigned'; (activeByCompany[c] = activeByCompany[c] || []).push(p); });
+  const archivedCompanies = new Set(archived.map(x => x.company || '').filter(Boolean));
+  const all = new Set([...Object.keys(activeByCompany), ...archivedCompanies]);
+  const sorted = [...all].sort();
+  if (!sorted.length) { grid.innerHTML = '<div class="empty">No companies with projects yet.</div>'; return; }
+  grid.innerHTML = sorted.map(c => {
+    const projs = activeByCompany[c] || [];
+    const g = projs.filter(p => p.status === 'Green').length,
+      a = projs.filter(p => p.status === 'Amber').length,
+      r = projs.filter(p => p.status === 'Red').length;
+    const done = archived.filter(x => (x.company || '') === c).length;
+    const activeCount = projs.length ? `<span>${projs.length} <b>active</b></span>` : '';
+    const doneCount = done ? `<span class="done">${done} <b>completed</b></span>` : '';
+    return `<div class="company-folder${state.company === c ? ' active' : ''}" onclick="selectCompany('${esc(c)}')" data-company="${esc(c)}">
+      <div class="company-folder-icon">📁</div>
+      <div class="company-folder-body">
+        <div class="company-folder-name">${esc(c)}</div>
+        <div class="company-folder-counts">${activeCount || '<span>No active</span>'}${doneCount}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function selectCompany(name) {
+  state.company = name;
+  /* navigate to the dedicated company page (not a scroll) */
+  location.href = '31_Company.html?company=' + encodeURIComponent(name);
+}
+
+function clearCompany() {
+  state.company = '';
+  const sel = $('company'); if (sel) sel.value = '';
+  renderProjects();
+  const back = $('allCompaniesBtn'); if (back) back.style.display = 'none';
+  const com = $('companies'); if (com) com.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+/* sync the active company folder highlight + back button with current state */
+function syncCompanyFolders() {
+  const folders = document.querySelectorAll('.company-folder');
+  folders.forEach(f => f.classList.toggle('active', f.dataset.company === state.company));
+  const back = $('allCompaniesBtn'); if (back) back.style.display = state.company ? 'inline-flex' : 'none';
 }
 
 function renderAttention() {
   const el = $('attentionList'); if (!el) return;
   const arr = PROJECTS.filter(p => p.status !== 'Green' || p.escalate === 'Yes' || p.freshness === 'Stale' || p.daysInStage > 14)
     .sort((a, b) => orderStatus(b.status) - orderStatus(a.status) || b.delayDays - a.delayDays);
-  el.innerHTML = arr.map(p => `<div class="att-item" onclick="openProject('${p.id}')"><span class="dot ${cls(p.status)}"></span><div><h4>${esc(p.name)}</h4><p>${esc(p.issue)}<br><b>Action:</b> ${esc(p.action)}</p></div><div style="text-align:right"><span class="pill ${cls(p.status)}">${p.status}</span><br><span style="color:#64748b;font-size:12px">${p.delayDays} days</span></div></div>`).join('');
+  el.innerHTML = arr.length ? arr.map(p => `<div class="att-item" onclick="openProject('${p.id}')"><span class="dot ${cls(p.status)}"></span><div><h4>${esc(p.name)}</h4><p>${esc(p.issue)}<br><b>Action:</b> ${esc(p.action)}</p></div><div style="text-align:right"><span class="pill ${cls(p.status)}">${p.status}</span><br><span style="color:#64748b;font-size:12px">${p.delayDays} days</span></div></div>`).join('') : '<div class="empty">No projects need attention right now. ✅</div>';
+  const cnt = $('escalationCount');
+  if (cnt) cnt.textContent = arr.length ? arr.length + ' to review' : 'All clear';
   staggerChildren(el, 60, 8);
 }
 
-/* Document Control — file movement table (03_Documents) */
+/* MD escalation counter — how many projects need review. */
+function renderEscalationCount() {
+  const cnt = $('escalationCount');
+  if (!cnt) return;
+  const n = PROJECTS.filter(p => p.status !== 'Green' || p.escalate === 'Yes' || p.freshness === 'Stale' || p.daysInStage > 14).length;
+  cnt.textContent = n ? n + ' to review' : 'All clear';
+}
+
+/* -------- Notification bell (top bar) --------
+   Surfaces everything that needs the MD's attention in one icon:
+   escalations, overdue files, pending approvals, expired compliance,
+   and stale updates. Badge shows the total; the dropdown lists them. */
+function notificationItems() {
+  const items = [];
+  PROJECTS.filter(p => p.escalate === 'Yes' || p.status === 'Red' || p.freshness === 'Stale' || p.daysInStage > 14)
+    .forEach(p => items.push({ sev: p.status === 'Red' ? 'red' : p.escalate === 'Yes' ? 'red' : 'amber', msg: `${p.name} — ${p.issue}`, act: () => openProject(p.id) }));
+  FILE_TRACKING.filter(t => t.status === 'Red').forEach(t => items.push({ sev: 'red', msg: `File overdue: ${t.project} (${t.daysInStage}d > SLA ${t.expectedDays}d)`, act: () => openProject(t.projectId) }));
+  COMPLIANCE.filter(c => c.expInDays < 0).forEach(c => items.push({ sev: 'red', msg: `Compliance expired: ${c.item}`, act: () => location.href = '16_SOP_Compliance.html' }));
+  pendingReviews().forEach(t => items.push({ sev: 'amber', msg: `Awaiting your approval: ${t.required} (${t.project})`, act: () => { const a = $('approvals'); if (a) a.scrollIntoView({ behavior: 'smooth' }); } }));
+  return items;
+}
+
+function renderNotificationBell() {
+  const badge = $('notifBadge'); if (!badge) return;
+  const items = notificationItems();
+  badge.textContent = items.length;
+  badge.style.display = items.length ? 'inline-flex' : 'none';
+  const menu = $('notifMenu'); if (!menu) return;
+  menu.innerHTML = items.length
+    ? items.slice(0, 12).map(it =>
+        `<div class="notif-item" onclick="it=${-1}; this.closest('#notifWrap').querySelector('#notifMenu').classList.remove('open'); (${it.act})">` +
+        `<span class="dot ${it.sev}"></span><span>${esc(it.msg)}</span></div>`).join('')
+    : '<div class="notif-item" style="cursor:default"><span style="color:#64748b">No pending notifications. ✅</span></div>';
+}
+
+function toggleNotifications(e) {
+  if (e && e.stopPropagation) e.stopPropagation();
+  const menu = $('notifMenu');
+  if (menu) {
+    menu.classList.toggle('open');
+    // re-render so item actions are fresh
+    const badge = $('notifBadge');
+    const items = notificationItems();
+    if (badge) { badge.textContent = items.length; badge.style.display = items.length ? 'inline-flex' : 'none'; }
+    menu.innerHTML = items.length
+      ? items.slice(0, 12).map((it, i) => `<div class="notif-item" data-i="${i}" onclick="event.stopPropagation();handleNotif(${i})"><span class="dot ${it.sev}"></span><span>${esc(it.msg)}</span></div>`).join('')
+      : '<div class="notif-item" style="cursor:default"><span style="color:#64748b">No pending notifications. ✅</span></div>';
+  }
+}
+function handleNotif(i) {
+  const items = notificationItems();
+  const it = items[i]; if (!it) return;
+  const menu = $('notifMenu'); if (menu) menu.classList.remove('open');
+  if (it.act) it.act();
+}
+document.addEventListener('click', (e) => {
+  const menu = $('notifMenu'); if (menu) menu.classList.remove('open');
+  const res = $('gsearchResults'); if (res) res.classList.remove('open');
+});
+
+/* -------- Global search (top bar) --------
+   Finds any company, active/completed project, or document by keyword,
+   so the user can locate something even if they forget which company
+   handled it. Clicking a result opens the right place. */
+function globalSearchResults(q) {
+  q = (q || '').toLowerCase().trim();
+  if (!q) return [];
+  const out = [];
+  // pages / sections — surface page titles, eyebrows, and key headings so
+  // searching e.g. "Command Center" or "Live Operations View" finds the page
+  const pageCatalog = [
+    { title: 'Command Center', kw: 'Command Center Live Operations View Dashboard portfolio', href: '01_Dashboard.html', desc: 'Command Center — live operations view of the whole portfolio.' },
+    { title: 'Project Portfolio', kw: 'Projects project portfolio active projects companies', href: '02_Projects.html', desc: 'All active projects across every company.' },
+    { title: 'Document Control', kw: 'Documents document register file movement controlled', href: '03_Documents.html', desc: 'Document register and file movement.' },
+    { title: 'Progress', kw: 'progress schedule planned actual variance', href: '04_Progress.html', desc: 'Project progress and schedule variance.' },
+    { title: 'Risks', kw: 'risks risk register', href: '05_Risks.html', desc: 'Risk register and mitigations.' },
+    { title: 'Payments', kw: 'payments certified paid outstanding retention', href: '06_Payments.html', desc: 'Cost and payment position.' },
+    { title: 'Site Photos', kw: 'site photos evidence', href: '07_Site_Photos.html', desc: 'Site photo evidence.' },
+    { title: 'Analytics', kw: 'analytics charts spi status freshness', href: '08_Analytics.html', desc: 'Portfolio analytics.' },
+    { title: 'System Admin', kw: 'admin users stages documents types', href: '09_Admin.html', desc: 'Users, stages and document types.' },
+    { title: 'SOP & Compliance', kw: 'SOP compliance BPP expiry renewal', href: '16_SOP_Compliance.html', desc: 'SOP library and compliance register.' },
+    { title: 'File & Approvals', kw: 'approval workflow file journey tracker', href: '21_Approval_Workflow.html', desc: 'Approval workflow and file tracking.' },
+    { title: 'Bidding Pipeline', kw: 'bidding pipeline bids tender opportunities', href: '22_Bidding_Pipeline.html', desc: 'Bidding opportunities and status.' },
+    { title: 'Inspections', kw: 'inspections inspector request', href: '23_Inspections.html', desc: 'Inspection requests.' },
+    { title: 'Integrations', kw: 'integrations email whatsapp captured', href: '25_Integrations.html', desc: 'Email/WhatsApp capture.' },
+    { title: 'Vendor Register', kw: 'vendors vendor register supplier', href: '27_Vendor_Register.html', desc: 'Vendor register.' },
+    { title: 'Project Archive', kw: 'archive completed close-out retention released', href: '28_Project_Archive.html', desc: 'Completed projects, grouped by company.' },
+    { title: 'Construction Analytics', kw: 'construction analytics cost forecast cash flow gantt risk heat', href: '29_Construction_Analytics.html', desc: 'Cost forecast, cash flow, Gantt and risk heat map.' },
+    { title: 'Accounts Portal', kw: 'accounts payments collection vendor payments', href: '17_Accounts_Dashboard.html', desc: 'Accounts dashboard and collections.' },
+    { title: 'Retention Register', kw: 'retention register retention held', href: '18_Retention_Register.html', desc: 'Retention register.' },
+    { title: 'Payment Requisitions', kw: 'requisitions payment request approval spend', href: '24_Payment_Requisitions.html', desc: 'Internal payment requisitions and spend authority.' },
+    { title: 'Staff Workspace', kw: 'staff workspace tasks my tasks sign off', href: '10_Staff_Dashboard.html', desc: 'Staff workspace — tasks and sign-offs.' },
+    { title: 'Contract Portal', kw: 'contract file tracking office stage', href: '14_Contract_Dashboard.html', desc: 'Contract portal and file tracking.' },
+  ];
+  pageCatalog.forEach(pg => {
+    if ((pg.title + ' ' + pg.kw).toLowerCase().includes(q)) out.push({ kind: 'page', label: pg.title, desc: pg.desc, act: () => location.href = pg.href });
+  });
+  // companies
+  const comps = new Set(PROJECTS.map(p => p.company).concat(ARCHIVE.concat(ZCC.archive()).map(x => x.company)).filter(Boolean));
+  comps.forEach(c => { if (String(c).toLowerCase().includes(q)) out.push({ kind: 'company', label: c, desc: `${PROJECTS.filter(p=>p.company===c).length} active · ${ARCHIVE.concat(ZCC.archive()).filter(x=>x.company===c).length} completed`, act: () => location.href = '31_Company.html?company=' + encodeURIComponent(c) }); });
+  // active projects — show real content (client, value, issue, status)
+  PROJECTS.forEach(p => {
+    const hay = [p.name, p.id, p.client, p.company, p.sector, p.location, p.pm, p.issue, p.stage, p.priority].join(' ');
+    if (hay.toLowerCase().includes(q)) {
+      const c = costInfo(p);
+      out.push({ kind: 'project', label: p.name, desc: `${p.company} · ${p.client} · ${money(p.contractValue)} · ${pct(p.actual)} done · ${p.status} — ${p.issue}`.slice(0,140), act: () => location.href = `31_Company.html?company=${encodeURIComponent(p.company)}` });
+    }
+  });
+  // completed projects
+  ARCHIVE.concat(ZCC.archive()).forEach(x => {
+    if ([x.name, x.id, x.client, x.company, x.sector, x.location, x.summary].join(' ').toLowerCase().includes(q))
+      out.push({ kind: 'completed', label: `${x.name} (completed)`, desc: `${x.company} · ${x.client} · ${money(x.contractValue)} · ${x.year || ''} — ${(x.summary||'').slice(0,90)}`.slice(0,150), act: () => location.href = `31_Company.html?company=${encodeURIComponent(x.company)}` });
+  });
+  // documents
+  DOCUMENTS.forEach(d => {
+    if ([d.title, d.documentId, d.type, d.projectName, d.client, d.stage].join(' ').toLowerCase().includes(q))
+      out.push({ kind: 'document', label: `${d.title}`, desc: `${d.projectName} · ${d.type} · ${d.stage}`, act: () => { const pid = d.projectId; const p = PROJECTS.find(x => x.id === pid); if (p) location.href = `31_Company.html?company=${encodeURIComponent(p.company)}`; } });
+  });
+  return out.slice(0, 12);
+}
+
+function bindGlobalSearch() {
+  const input = $('globalSearch'); const res = $('gsearchResults');
+  if (!input || !res) return;
+  const K = { page: 'Page', company: 'Company', project: 'Project', completed: 'Completed', document: 'Document' };
+  input.addEventListener('input', () => {
+    const items = globalSearchResults(input.value);
+    if (!input.value.trim()) { res.classList.remove('open'); return; }
+    res.innerHTML = items.length
+      ? items.map((it, i) => `<div class="gsearch-item" data-i="${i}" onclick="event.stopPropagation();goGlobalSearch(${i})"><span class="gsearch-kind">${K[it.kind]}</span><div class="gsearch-body"><div class="gsearch-title">${esc(it.label)}</div>${it.desc ? `<div class="gsearch-desc">${esc(it.desc)}</div>` : ''}</div></div>`).join('')
+      : '<div class="gsearch-item" style="cursor:default"><span style="color:#64748b">No results</span></div>';
+    res.classList.add('open');
+    window.__gsearch = items;
+  });
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { const items = globalSearchResults(input.value); if (items[0]) items[0].act(); res.classList.remove('open'); input.value=''; }
+    if (e.key === 'Escape') { res.classList.remove('open'); }
+  });
+}
+function goGlobalSearch(i) {
+  const items = window.__gsearch || [];
+  const it = items[i]; if (!it) return;
+  const res = $('gsearchResults'); if (res) res.classList.remove('open');
+  const input = $('globalSearch'); if (input) input.value = '';
+  if (it.act) it.act();
+}
+
+/* Document Control — file movement table (03_Documents).
+   Also honours the document-register search box so one query
+   filters both the file-movement table and the register. */
 function renderFileTable() {
   const el = $('fileTable'); if (!el) return;
-  const rows = [...PROJECTS].sort((a, b) => b.daysInStage - a.daysInStage).map(p =>
+  const q = (docSearch || '').toLowerCase();
+  const projs = q
+    ? PROJECTS.filter(p => [p.name, p.id, p.client, p.fileStage, p.currentOffice, p.fileOwner, p.nextAction]
+        .join(' ').toLowerCase().includes(q))
+    : [...PROJECTS];
+  const rows = projs.sort((a, b) => b.daysInStage - a.daysInStage).map(p =>
     `<tr onclick="openProject('${p.id}')"><td><b>${esc(p.name)}</b><br><span style="color:#64748b">${esc(p.client)}</span></td><td>${esc(p.fileStage)}</td><td>${esc(p.currentOffice)}</td><td>${p.daysInStage}</td><td>${esc(p.fileOwner)}</td><td>${esc(p.nextAction)}</td><td><span class="pill ${p.daysInStage > 14 ? 'red' : p.daysInStage > 7 ? 'amber' : 'green'}">${p.daysInStage > 14 ? 'Escalate' : p.daysInStage > 7 ? 'Monitor' : 'OK'}</span></td></tr>`).join('');
   el.innerHTML = `<thead><tr><th>Project</th><th>Current Stage</th><th>Current Office</th><th>Days</th><th>Owner</th><th>Next Action</th><th>Status</th></tr></thead><tbody>${rows}</tbody>`;
   staggerRows(el);
 }
 
-/* Document Control — document register table (03_Documents) */
+/* Document Control — document register table (03_Documents).
+   Immutability: controlled documents are read-only for everyone
+   except the MD, who gets inline Edit / Delete actions. A live
+   search box (docSearch) filters every field. */
+/* Return the real Drive file link for a document when available,
+   otherwise the bundled sample file. Real links are used where we have
+   them (award letters, BOQs, completion certs, expense sheets); the
+   bundled sample PDF is the offline fallback. */
+function docLink(d){
+  const ov = (typeof docOverrides === 'function') ? docOverrides() : {};
+  const c = ov && ov[d && d.documentId];
+  if (c && c.hidden) return '#';
+  if (c && c.driveFile) return c.driveFile;
+  if (c && c.file) return c.file;
+  if (d && d.driveFile) return d.driveFile;
+  return d && d.file ? d.file : '#';
+}
+function docDownload(d){
+  return d && d.driveFile ? d.driveFile : (d && d.file ? d.file : '#');
+}
+
 function renderDocRegister() {
   const el = $('docRegister'); if (!el) return;
-  const rows = DOCUMENTS.map(d =>
-    `<tr onclick="openProject('${d.projectId}')"><td><b>${esc(d.documentId)}</b><br><span style="color:#64748b">${esc(d.title)}</span></td><td><b>${esc(d.projectName)}</b><br><span style="color:#64748b">${esc(d.projectId)}</span></td><td>${esc(d.type)}<br><span style="color:#64748b">${esc(d.stage)}</span></td><td>${esc(d.owner)}</td><td>${esc(d.date)}</td><td><span class="pill green">${esc(d.status)}</span></td><td><div style="display:flex;gap:8px;flex-wrap:wrap" onclick="event.stopPropagation()"><a class="download-btn" href="${esc(d.file)}" target="_blank">Open</a><a class="download-btn primary" href="${esc(d.file)}" download>Download</a></div></td></tr>`).join('');
-  el.innerHTML = `<table class="file-table"><thead><tr><th>Document</th><th>Project</th><th>Type / Stage</th><th>Owner</th><th>Date</th><th>Status</th><th>File</th></tr></thead><tbody>${rows}</tbody></table>`;
+  const q = (docSearch || '').toLowerCase();
+  const docs = q
+    ? DOCUMENTS.filter(d => [d.documentId, d.title, d.type, d.stage, d.owner, d.date, d.status,
+        d.projectName, d.projectId, d.client].join(' ').toLowerCase().includes(q))
+    : DOCUMENTS;
+  const md = isMD();
+  const count = $('docCount');
+  if (count) count.textContent = docs.length + ' of ' + DOCUMENTS.length + ' documents';
+  const rows = docs.map(d => {
+    const fl = docLink(d);
+    const fileCell = fl && fl !== '#'
+      ? `<div style="display:flex;gap:8px;flex-wrap:wrap" onclick="event.stopPropagation()"><a class="download-btn" href="${esc(fl)}" target="_blank">Open</a><a class="download-btn primary" href="${esc(fl)}" download>Download</a></div>${d.driveFile?'<span style="color:#64748b;font-size:11px" title="Live file from Drive">● live</span>':''}`
+      : `<span style="color:#64748b;font-size:12px">No file</span>`;
+    const ctrl = md
+      ? `<div style="display:flex;gap:8px;flex-wrap:wrap" onclick="event.stopPropagation()"><button class="upd-btn" onclick="editDocument('${esc(d.documentId)}')">Edit</button><button class="upd-btn upd-btn-danger" onclick="deleteDocument('${esc(d.documentId)}')">Delete</button></div>`
+      : `<span style="color:#64748b;font-size:12px" title="Controlled documents are immutable — only the MD can edit or delete.">🔒 Immutable</span>`;
+    return `<tr onclick="openProject('${d.projectId}')"><td><b>${esc(d.documentId)}</b><br><span style="color:#64748b">${esc(d.title)}</span></td><td><b>${esc(d.projectName)}</b><br><span style="color:#64748b">${esc(d.projectId)}</span></td><td>${esc(d.type)}<br><span style="color:#64748b">${esc(d.stage)}</span></td><td>${esc(d.owner)}</td><td>${esc(d.date)}</td><td><span class="pill green">${esc(d.status)}</span></td><td>${fileCell}</td><td>${ctrl}</td></tr>`;
+  }).join('');
+  el.innerHTML = `<table class="file-table"><thead><tr><th>Document</th><th>Project</th><th>Type / Stage</th><th>Owner</th><th>Date</th><th>Status</th><th>File</th><th>Control</th></tr></thead><tbody>${rows || '<tr><td colspan="8"><div class="empty">No documents match this search.</div></td></tr>'}</tbody></table>`;
   staggerRows(el);
+}
+
+/* --- MD: inline edit of a controlled document (immutability) --- */
+let editingDocId = null;
+function editDocument(id) {
+  if (!isMD()) { toast('Only the MD can edit controlled documents.', 'error'); return; }
+  const d = DOCUMENTS.find(x => x.documentId === id); if (!d) return;
+  editingDocId = id;
+  const e = $('docEditor'); if (!e) return;
+  e.style.display = 'block';
+  e.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+      <b>Edit controlled document — ${esc(d.documentId)}</b>
+      <span style="color:#64748b;font-size:12px">MD authority only · changes are audited</span>
+    </div>
+    <div class="upd-grid">
+      <div class="upd-field"><label>Document Title</label><input type="text" id="edTitle" value="${esc(d.title)}"></div>
+      <div class="upd-field"><label>Type</label><input type="text" id="edType" value="${esc(d.type)}"></div>
+      <div class="upd-field"><label>Stage</label><input type="text" id="edStage" value="${esc(d.stage)}"></div>
+      <div class="upd-field"><label>Owner</label><input type="text" id="edOwner" value="${esc(d.owner)}"></div>
+      <div class="upd-field"><label>Status</label><select id="edStatus"><option>Available</option><option>Signed Off</option><option>Under Review</option><option>Archived</option></select></div>
+      <div class="upd-field"><label>Date</label><input type="text" id="edDate" value="${esc(d.date)}"></div>
+    </div>
+    <div class="upd-row">
+      <button class="upd-btn" onclick="saveDocEdit()">Save Changes</button>
+      <button class="upd-btn" style="background:transparent;color:#fda4af;border-color:rgba(253,164,175,.3)" onclick="cancelDocEdit()">Cancel</button>
+      <span class="upd-note" id="edMsg"></span>
+    </div>`;
+  const st = $('edStatus'); if (st) st.value = d.status;
+  e.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+function saveDocEdit() {
+  const d = DOCUMENTS.find(x => x.documentId === editingDocId); if (!d) return;
+  const title = $('edTitle').value.trim(), type = $('edType').value.trim(),
+    stage = $('edStage').value.trim(), owner = $('edOwner').value.trim(),
+    status = $('edStatus').value, date = $('edDate').value.trim();
+  const err = $('edMsg');
+  if (!title || !type) { if (err) err.textContent = 'Title and type are required.'; return; }
+  const before = JSON.stringify({ title: d.title, type: d.type, stage: d.stage, owner: d.owner, status: d.status, date: d.date });
+  d.title = title; d.type = type; d.stage = stage; d.owner = owner; d.status = status; d.date = date;
+  ZCC.snapshot(); ZCC.logAudit(whoami(), 'DOCUMENT_EDIT', `${d.documentId} changed ${before} → ${JSON.stringify({ title, type, stage, owner, status, date })}`);
+  if (err) err.innerHTML = `<span style="color:#16a34a">✔ Changes saved and audited for ${esc(d.documentId)}.</span>`;
+  toast('Document updated: ' + d.documentId);
+  cancelDocEdit();
+  renderDocRegister(); renderDocUploads(); renderFileTable();
+}
+function cancelDocEdit() {
+  editingDocId = null;
+  const e = $('docEditor'); if (e) { e.style.display = 'none'; e.innerHTML = ''; }
+}
+function deleteDocument(id) {
+  if (!isMD()) { toast('Only the MD can delete controlled documents.', 'error'); return; }
+  const d = DOCUMENTS.find(x => x.documentId === id); if (!d) return;
+  if (!confirm(`Delete controlled document ${id} — "${d.title}"?\n\nOnly the Managing Director can delete controlled documents. This is irreversible and is recorded in the audit trail.`)) return;
+  const i = DOCUMENTS.findIndex(x => x.documentId === id); if (i > -1) DOCUMENTS.splice(i, 1);
+  ZCC.snapshot(); ZCC.logAudit(whoami(), 'DOCUMENT_DELETE', id + ' · ' + d.title);
+  toast('Document deleted: ' + id, 'info');
+  cancelDocEdit();
+  renderDocRegister(); renderDocUploads(); renderFileTable();
+}
+
+/* Wire the document-register search box (03_Documents) */
+function bindDocSearch() {
+  const el = $('docSearch'); if (!el) return;
+  el.addEventListener('input', e => { docSearch = e.target.value; renderFileTable(); renderDocRegister(); });
+}
+
+/* ============================================================
+   DOCUMENT MANAGEMENT (32) — Trev-style link control.
+   Lets the MD/Contract Lead/Admin add, edit or change the Drive
+   link for any document, without editing code. Changes persist
+   to localStorage (and would map to Google Sheets in production).
+   ============================================================ */
+const DOC_OVERRIDE_KEY = 'zcc.doclinks.v1';
+function docOverrides(){ try { const o=JSON.parse(localStorage.getItem(DOC_OVERRIDE_KEY)||'null'); if(o&&typeof o==='object') return o; }catch(e){} return {}; }
+function saveDocOverrides(o){ try { localStorage.setItem(DOC_OVERRIDE_KEY, JSON.stringify(o)); }catch(e){} }
+
+let mdEditingId = null;
+
+function mdProjectsOptions() {
+  const sel = $('mdProject'); if (!sel) return;
+  const all = PROJECTS.concat(ARCHIVE.concat(ZCC.archive()));
+  sel.innerHTML = '<option value="">Select project…</option>' + all.map(p => `<option value="${esc(p.id)}">${esc(p.id)} · ${esc(p.name)}</option>`).join('');
+}
+
+/* effective list of documents = seed + overrides (adds/changes) */
+function effectiveDocs() {
+  const ov = docOverrides();
+  const changed = {};
+  const added = [];
+  Object.keys(ov).forEach(k => {
+    if (k.startsWith('+')) added.push(ov[k]);
+    else changed[k] = ov[k];
+  });
+  let list = DOCUMENTS.map(d => {
+    const c = changed[d.documentId] || {};
+    return Object.assign({}, d, { title: c.title ?? d.title, type: c.type ?? d.type, stage: c.stage ?? d.stage, file: c.file ?? d.file, driveFile: c.driveFile ?? d.driveFile, date: c.date ?? d.date });
+  });
+  list = list.concat(added);
+  return list;
+}
+function docLinkEff(d){
+  const ov = docOverrides();
+  const c = ov[d.documentId];
+  if (c && c.driveFile) return c.driveFile;
+  if (c && c.file) return c.file;
+  return d.driveFile || d.file || '#';
+}
+
+function renderDocManage() {
+  mdProjectsOptions();
+  const list = effectiveDocs();
+  const cnt = $('mdCount'); if (cnt) cnt.textContent = list.length + ' documents';
+  const t = $('mdTable'); if (!t) return;
+  t.innerHTML = list.length
+    ? `<table class="file-table"><thead><tr><th>Document</th><th>Project</th><th>Type / Stage</th><th>Link</th><th>Actions</th></tr></thead><tbody>` +
+      list.map(d => {
+        const fl = docLinkEff(d);
+        const linked = fl && fl.includes('drive.google.com') ? '<span style="color:#16a34a;font-size:11px">● linked</span>' : '<span style="color:#64748b;font-size:11px">no link</span>';
+        return `<tr>
+          <td><b>${esc(d.title)}</b><br><span style="color:#64748b">${esc(d.documentId)}</span></td>
+          <td>${esc(d.projectName)}<br><span style="color:#64748b">${esc(d.projectId)}</span></td>
+          <td>${esc(d.type)}<br><span style="color:#64748b">${esc(d.stage)}</span></td>
+          <td>${linked}${fl && fl!=='#' ? `<div style="font-size:11px;color:#64748b;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(fl)}</div>` : ''}</td>
+          <td><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="upd-btn" onclick="mdEdit('${esc(d.documentId)}')">Edit</button><button class="upd-btn upd-btn-danger" onclick="mdDelete('${esc(d.documentId)}')">Delete</button></div></td>
+        </tr>`;
+      }).join('') + `</tbody></table>`
+    : '<div class="empty">No documents yet.</div>';
+}
+function mdEdit(id) {
+  const list = effectiveDocs();
+  const d = list.find(x => x.documentId === id); if (!d) return;
+  mdEditingId = id;
+  const ov = docOverrides();
+  const c = ov[id] || {};
+  set('mdProject', d.projectId); set('mdTitle', c.title ?? d.title); set('mdType', c.type ?? d.type); set('mdFile', c.driveFile ?? c.file ?? d.driveFile ?? d.file ?? '');
+  const btn = document.querySelector('.panel.upd .upd-btn');
+  if (btn) btn.textContent = 'Save Changes';
+  const m = $('mdMsg'); if (m) m.textContent = 'Editing ' + id + ' — change the link/details and save.';
+  const head = document.querySelector('.section-head h2');
+  if (head) head.textContent = 'Edit Document';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+function set(id, v){ const el=$(id); if(el) el.value = v; }
+function mdSaveNew() {
+  const pid = $('mdProject')?.value, title = $('mdTitle')?.value.trim(), type = $('mdType')?.value, file = $('mdFile')?.value.trim();
+  const m = $('mdMsg');
+  if (!pid || !title) { if (m) m.textContent = 'Choose a project and enter a title.'; return; }
+  const p = PROJECTS.find(x=>x.id===pid) || ARCHIVE.concat(ZCC.archive()).find(x=>x.id===pid);
+  const ov = docOverrides();
+  const isDrive = /drive\.google\.com\/file\/d\//.test(file);
+  if (mdEditingId) {
+    ov[mdEditingId] = { projectId: pid, title, type, stage: p?.stage || '', file: isDrive ? '#' : file, driveFile: isDrive ? file : '', date: todayStr() };
+    saveDocOverrides(ov);
+    if (m) m.innerHTML = '<span style="color:#16a34a">✔ Updated — ' + esc(mdEditingId) + '.</span>';
+    toast('Document updated: ' + mdEditingId);
+  } else {
+    const docId = 'DOC-' + pid + '-' + String(effectiveDocs().length + 1).padStart(3,'0');
+    ov['+' + docId] = { documentId: docId, projectId: pid, projectName: p?.name || pid, client: p?.client || '', type, stage: p?.stage || '', title, date: todayStr(), file: isDrive ? '#' : file, driveFile: isDrive ? file : '', status: 'Available' };
+    saveDocOverrides(ov);
+    if (m) m.innerHTML = '<span style="color:#16a34a">✔ Added — ' + esc(docId) + '.</span>';
+    toast('Document added: ' + docId);
+  }
+  mdEditingId = null;
+  $('mdTitle').value=''; $('mdFile').value='';
+  const btn = document.querySelector('.panel.upd .upd-btn'); if (btn) btn.textContent = '+ Add Document';
+  const head = document.querySelector('.section-head h2'); if (head) head.textContent = 'Add / Edit Document';
+  renderDocManage();
+}
+function mdDelete(id) {
+  if (!confirm('Delete document ' + id + '?\n\nThis removes it from the document space (your override). The source seed document, if any, stays in the app data.')) return;
+  const ov = docOverrides();
+  // override with empty file to hide seed doc, or remove added doc
+  if (ov['+'+id]) { delete ov['+'+id]; }
+  else { ov[id] = { hidden: true }; }
+  saveDocOverrides(ov);
+  toast('Document removed: ' + id, 'info');
+  renderDocManage();
 }
 
 function documentCards(p) {
   const docs = DOCUMENTS.filter(d => d.projectId === p.id);
   if (!docs.length) return '<div class="empty">No documents linked to this project yet.</div>';
-  return `<div class="doc-grid">${docs.map(d => `<div class="doc"><b>${esc(d.title)}</b><span>${esc(d.type)} · ${esc(d.stage)}<br>Owner: ${esc(d.owner)} · Date: ${esc(d.date)}</span><div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><a class="download-btn" href="${esc(d.file)}" target="_blank">Open</a><a class="download-btn primary" href="${esc(d.file)}" download>Download</a></div></div>`).join('')}</div>`;
+  return `<div class="doc-grid">${docs.map(d => { const fl = docLink(d); return `<div class="doc"><b>${esc(d.title)}</b>${d.driveFile?'<span class="pill green" style="margin-left:6px">● live</span>':''}<span>${esc(d.type)} · ${esc(d.stage)}<br>Owner: ${esc(d.owner)} · Date: ${esc(d.date)}</span><div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><a class="download-btn" href="${esc(fl)}" target="_blank">Open</a><a class="download-btn primary" href="${esc(fl)}" download>Download</a></div></div>`; }).join('')}</div>`;
 }
 
 function costCards(p) {
@@ -495,7 +993,7 @@ function openProject(id) {
   activeProjectId = p.id;
   const dp = $('drawerPrint'); if (dp) dp.href = `26_Project_Report.html?id=${encodeURIComponent(p.id)}`;
   const da = $('drawerArchive');
-  if (da) { const u = ZCC.user(); da.style.display = (u && ['MD','Contract Lead','Super Admin','Accounts'].includes(u.role)) ? 'inline-flex' : 'none'; }
+  if (da) { const u = ZCC.user(); da.style.display = (u && u.role === 'MD') ? 'inline-flex' : 'none'; }
 
   /* tabs */
   $('drawerTabs').innerHTML = allowed.map(k =>
@@ -509,7 +1007,7 @@ function openProject(id) {
       const gallery = imgs.length
         ? `<div class="overview-gallery">${imgs.map(u => `<img class="overview-img" src="${esc(u)}" alt="${esc(p.name)}" onclick="window.open('${esc(u)}','_blank')">`).join('')}</div><div class="bid-detail-caption">Current site view</div>`
         : '';
-      return `<div class="detail-kpis"><div class="dk"><span>Contract Value</span><b>${money(p.contractValue)}</b></div><div class="dk"><span>Actual Progress</span><b>${pct(p.actual)}</b></div><div class="dk"><span>Delay Days</span><b>${p.delayDays}</b></div><div class="dk"><span>Mobilization</span><b>${p.mobilization}</b></div></div>${gallery}<div class="info-grid"><div class="info"><b>Client / User Department</b>${esc(p.client)}<br><span style="color:#64748b">${esc(p.userDept)}</span></div><div class="info"><b>Project Manager</b>${esc(p.pm)}</div><div class="info"><b>Supervisor / Vendor</b>${esc(p.supervisor)}<br>${esc(p.vendor)}</div><div class="info"><b>Stage</b>${esc(p.stage)}</div><div class="info"><b>Planned End / Forecast</b>${esc(p.plannedEnd)} → ${esc(p.forecast)}</div><div class="info"><b>Delay Source</b>${esc(p.delaySource)}</div></div>`;
+      return `<div class="detail-kpis"><div class="dk"><span>Contract Value</span><b>${money(p.contractValue)}</b></div><div class="dk"><span>Actual Progress</span><b>${pct(p.actual)}</b></div><div class="dk"><span>Delay Days</span><b>${p.delayDays}</b></div><div class="dk"><span>Mobilization</span><b>${p.mobilization}</b></div></div>${gallery}<div class="info-grid"><div class="info"><b>Company / Entity</b>${esc(p.company || '—')}</div><div class="info"><b>Client / User Department</b>${esc(p.client)}<br><span style="color:#64748b">${esc(p.userDept)}</span></div><div class="info"><b>Project Manager</b>${esc(p.pm)}</div><div class="info"><b>Supervisor / Vendor</b>${esc(p.supervisor)}<br>${esc(p.vendor)}</div><div class="info"><b>Stage</b>${esc(p.stage)}</div><div class="info"><b>Planned End / Forecast</b>${esc(p.plannedEnd)} → ${esc(p.forecast)}</div><div class="info"><b>Delay Source</b>${esc(p.delaySource)}</div></div>`;
     },
     progress: () => `<div class="detail-kpis"><div class="dk"><span>Planned</span><b>${pct(p.planned)}</b></div><div class="dk"><span>Actual</span><b>${pct(p.actual)}</b></div><div class="dk"><span>Variance</span><b>${p.actual - p.planned}%</b></div><div class="dk"><span>Freshness</span><b>${p.daysOld}d</b></div></div><div style="margin-top:12px">${trendSvg(p)}</div><h3>Update History</h3>${historyTable(p)}`,
     file: () => `${timeline(p)}<div class="info-grid"><div class="info"><b>Current Stage</b>${esc(p.fileStage)}</div><div class="info"><b>Current Office</b>${esc(p.currentOffice)}</div><div class="info"><b>Days in Stage</b>${p.daysInStage}</div><div class="info"><b>Follow-up Owner</b>${esc(p.fileOwner)}</div></div><div class="callout" style="margin-top:12px"><b>Next action:</b> ${esc(p.nextAction)}</div>`,
@@ -542,8 +1040,73 @@ function closeDrawer() {
   document.body.classList.remove('open');
 }
 
+/* Open a completed (archived) project's detail in the drawer. Archived
+   projects have no live progress/files/payments — they show the final
+   record: value, dates, retention, summary, photos and documents. */
+function openArchivedProject(id) {
+  const x = ARCHIVE.concat(ZCC.archive()).find(a => a.id === id);
+  if (!x || !$('drawer')) return;
+  const ph = (PROJECT_PHOTO && PROJECT_PHOTO[id]) || [];
+  const gallery = ph.length
+    ? `<div class="overview-gallery">${ph.map(u => `<img class="overview-img" src="${esc(u)}" alt="${esc(x.name)}" onclick="window.open('${esc(u)}','_blank')">`).join('')}</div>`
+    : '';
+  const docLinks = (x.docs || []).map(f => `<a class="download-btn" href="${esc(f)}" target="_blank">Open</a><a class="download-btn primary" href="${esc(f)}" download>Download</a>`).join(' ');
+  /* real documents from the register for this completed project */
+  const regDocs = DOCUMENTS.filter(d => d.projectId === x.id);
+  const regRows = regDocs.map(d => {
+    const fl = docLink(d);
+    return `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 0;border-bottom:1px dashed var(--line)">
+      <div style="min-width:0"><b style="font-size:13px">${esc(d.title)}</b><div style="color:#64748b;font-size:11.5px">${esc(d.type)} · ${esc(d.date)}</div></div>
+      ${fl && fl!=='#' ? `<div style="display:flex;gap:8px;flex-wrap:wrap" onclick="event.stopPropagation()"><a class="download-btn" href="${esc(fl)}" target="_blank">Open</a></div>` : '<span style="color:#64748b;font-size:12px">No file</span>'}
+    </div>`;
+  }).join('');
+  const regBlock = regRows ? `<div style="margin-top:12px"><h4 style="margin:0 0 6px;font-size:13px;color:#0a0a0a">Registered documents</h4>${regRows}</div>` : '';
+  $('drawerBadges').innerHTML = `<span class="pill green">Completed</span>${x.year ? `<span class="pill grey">${x.year}</span>` : ''}`;
+  $('drawerTitle').textContent = x.name;
+  $('drawerSub').textContent = `${x.id} · ${x.client} · ${x.location || ''}`;
+  activeProjectId = x.id;
+  const da2 = $('drawerArchive'); if (da2) da2.style.display = 'none';  /* already archived */
+  $('drawerTabs').innerHTML = `<button class="tab active" data-tab="overview">Overview</button><button class="tab" data-tab="docs">Documents</button>`;
+  $('panels').innerHTML =
+    `<section class="tab-panel active" data-panel="overview">
+      <div class="detail-kpis">
+        <div class="dk"><span>Contract Value</span><b>${money(x.contractValue)}</b></div>
+        <div class="dk"><span>Completed</span><b>${esc(x.completed || '—')}</b></div>
+        <div class="dk"><span>Retention</span><b style="color:#16a34a">${esc(x.retentionReleased || '—')}</b></div>
+        <div class="dk"><span>Year</span><b>${esc(x.year || '—')}</b></div>
+      </div>
+      ${gallery}
+      <div class="info-grid" style="margin-top:12px">
+        <div class="info"><b>Client</b>${esc(x.client)}</div>
+        <div class="info"><b>Sector</b>${esc(x.sector || '—')}</div>
+        <div class="info"><b>Location</b>${esc(x.location || '—')}</div>
+        <div class="info"><b>Company</b>${esc(x.company || '—')}</div>
+        <div class="info"><b>Closed</b>${esc(x.closed || '—')}</div>
+        <div class="info"><b>Status</b><span class="pill green">Completed</span></div>
+      </div>
+      <div class="callout" style="margin-top:12px"><b>Summary:</b> ${esc(x.summary || 'Completed project.')}</div>
+    </section>
+    <section class="tab-panel" data-panel="docs">
+      <div class="empty" style="margin-bottom:10px">Completed project documents.</div>
+      ${docLinks ? `<div style="display:flex;gap:8px;flex-wrap:wrap">${docLinks}</div>` : ''}
+      ${regBlock}
+    </section>`;
+  document.querySelectorAll('#drawerTabs .tab').forEach(t => {
+    t.onclick = () => {
+      document.querySelectorAll('#drawerTabs .tab').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.drawer .tab-panel').forEach(pp => pp.classList.remove('active'));
+      t.classList.add('active');
+      const pnl = document.querySelector(`.drawer [data-panel="${t.dataset.tab}"]`);
+      if (pnl) pnl.classList.add('active');
+    };
+  });
+  $('overlay').classList.add('show');
+  $('drawer').classList.add('show');
+  document.body.classList.add('open');
+}
+
 function bindCC() {
-  ['search', 'sector', 'client', 'pm', 'sort'].forEach(id => {
+  ['search', 'sector', 'client', 'pm', 'company', 'sort'].forEach(id => {
     const el = $(id); if (!el) return;
     el.addEventListener(id === 'search' ? 'input' : 'change', e => { state[id] = e.target.value; renderProjects(); });
   });
@@ -1279,14 +1842,42 @@ function updAddDoc(){
   renderFileTable(); renderDocRegister(); renderDocUploads();
 }
 
+/* --- ACCOUNTS: register a document (invoice support, certification,
+   retention release, etc.) against a project. Same shared register —
+   so a document raised here appears in the Command Center, MD's
+   dashboard and the document archive. --- */
+function acctAddDoc(){
+  const pid = $('acctDocProject')?.value, type = $('acctDocType')?.value,
+    title = $('acctDocTitle')?.value, note = $('acctDocNote')?.value || '';
+  const err = $('acctDocMsg');
+  if (!pid || !title) { if (err) err.textContent = 'Choose a project and enter a title.'; return; }
+  const p = PROJECTS.find(x => x.id === pid);
+  const next = String(DOCUMENTS.length + 1).padStart(3, '0');
+  const ts = dateGB(new Date()), tm = time24(new Date());
+  DOCUMENTS.push({
+    documentId: 'DOC-ZW-' + pid.slice(-3) + '-' + next, projectId: pid,
+    projectName: p.name, client: p.client, type, stage: p.stage,
+    title: title + (note ? ' — ' + note : ''),
+    date: ts, time: tm, uploadedAt: ts + ' ' + tm,
+    owner: whoami(), status: 'Available', file: '#'
+  });
+  ZCC.snapshot(); ZCC.logAudit(whoami(), 'ACCOUNTS_DOCUMENT_UPLOAD', `${pid} · ${type} · ${title} ${note}`.trim());
+  if (err) err.innerHTML = `<span style="color:#16a34a">✔ Document registered — ${esc(title)} (${pid}) at ${ts} ${tm}.</span>`;
+  toast('Document registered: ' + title);
+  if ($('acctDocTitle')) $('acctDocTitle').value = '';
+  if ($('acctDocNote')) $('acctDocNote').value = '';
+  renderDocUploads();
+}
+
 /* Recent document uploads feed — with timestamps. Shown on the MD
    dashboard and the Admin Console so leadership can see who uploaded
    what, and when. */
 function renderDocUploads(){
   const el = $('docUploads'); if (!el) return;
   const rows = DOCUMENTS.slice().sort((a, b) => String(b.uploadedAt || b.date).localeCompare(String(a.uploadedAt || a.date))).map(d => {
-    const fileCell = d.file && d.file !== '#' && d.file !== ''
-      ? `<div style="display:flex;gap:8px;flex-wrap:wrap" onclick="event.stopPropagation()"><a class="download-btn" href="${esc(d.file)}" target="_blank">Open</a><a class="download-btn primary" href="${esc(d.file)}" download>Download</a></div>`
+    const fl = docLink(d);
+    const fileCell = fl && fl !== '#'
+      ? `<div style="display:flex;gap:8px;flex-wrap:wrap" onclick="event.stopPropagation()"><a class="download-btn" href="${esc(fl)}" target="_blank">Open</a><a class="download-btn primary" href="${esc(fl)}" download>Download</a></div>${d.driveFile?'<span style="color:#64748b;font-size:11px">● live</span>':''}`
       : `<span style="color:#64748b;font-size:12px">No file</span>`;
     return `<tr>
       <td><b>${esc(d.title)}</b><br><span style="color:#64748b">${esc(d.documentId)} · ${esc(d.type)}</span></td>
@@ -1698,6 +2289,35 @@ function renderExecutiveSummary(){
       return `<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px dashed var(--line)"><span style="font-size:13px">${esc(c.item)}</span><span class="pill ${b.cls}">${c.expInDays < 0 ? 'Expired' : c.expInDays + 'd'}</span></div>`;
     }).join('');
   }
+  /* Payments & Collections — the third pillar of the one-touch view
+     (progress + files + payments). Portfolio certified/paid/outstanding,
+     retention, collection rate, and the biggest overdue balances so the
+     MD sees exactly who owes what without opening the Accounts portal. */
+  const pm = $('execPayments');
+  if (pm) {
+    const t = PROJECTS.reduce((a, p) => {
+      const c = costInfo(p);
+      a.value += p.contractValue; a.certified += c.certified; a.paid += c.paid; a.outstanding += c.outstanding; a.retention += c.retention;
+      return a;
+    }, { value: 0, certified: 0, paid: 0, outstanding: 0, retention: 0 });
+    const collect = t.certified ? Math.round(t.paid / t.certified * 100) : 0;
+    const kpis = [
+      ['Certified', t.certified, '#0a0a0a'],
+      ['Paid', t.paid, '#16a34a'],
+      ['Outstanding', t.outstanding, t.outstanding ? '#dc2626' : '#0a0a0a'],
+      ['Retention', t.retention, '#0a0a0a']
+    ].map(([lab, v, col]) =>
+      `<div style="display:flex;justify-content:space-between;padding:6px 0;font-size:13px"><b style="color:${col}">${esc(lab)}</b><b>${money(v)}</b></div>`).join('');
+    const rate = `<div style="margin:4px 0 10px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><b>Collection rate</b><span>${collect}%</span></div><div style="height:8px;border-radius:99px;background:#eef2f7;overflow:hidden"><div class="an-fill" style="height:8px;width:${collect}%;background:${collect >= 80 ? '#16a34a' : collect >= 50 ? '#f59e0b' : '#dc2626'};border-radius:99px"></div></div></div>`;
+    const top = PROJECTS.filter(p => costInfo(p).outstanding > 0)
+      .sort((a, b) => costInfo(b).outstanding - costInfo(a).outstanding).slice(0, 4)
+      .map(p => {
+        const c = costInfo(p);
+        return `<div class="att-item" onclick="openProject('${p.id}')"><span class="dot ${c.outstanding > 100000000 ? 'red' : c.outstanding > 30000000 ? 'amber' : 'green'}"></span><div><h4 style="font-size:13px">${esc(p.name)}</h4><p style="color:#64748b">Outstanding <b>${money(c.outstanding)}</b></p></div><span class="pill ${cls(p.status)}">${p.status}</span></div>`;
+      }).join('');
+    pm.innerHTML = kpis + rate + (top ? `<div style="margin-top:6px;border-top:1px dashed var(--line);padding-top:6px">${top}</div>` : '<div class="empty" style="margin-top:6px">No outstanding balances. ✅</div>');
+    animateBars(pm);
+  }
 }
 
 /* ============================================================
@@ -1810,20 +2430,38 @@ function renderArchive(){
   }
   const t = $('archTable');
   if (t) {
-    if (!items.length) { t.innerHTML = '<div class="empty">No archived projects yet. Archive a completed project to move it here.</div>'; return; }
-    const rows = items.map(x => {
-      const docLinks = (x.docs || []).map(f => `<a class="download-btn" href="${esc(f)}" target="_blank">Doc</a>`).join(' ');
-      return `<tr>
+    if (!items.length) { t.innerHTML = '<div class="empty">No completed projects yet. Archive a completed project to move it here.</div>'; return; }
+    const docLinks = x => (x.docs || []).map(f => `<a class="download-btn" href="${esc(f)}" target="_blank">Doc</a>`).join(' ');
+    /* Group completed projects by COMPANY folder, then by year inside each. */
+    const byCompany = {};
+    items.forEach(x => { const c = x.company || 'Unassigned'; (byCompany[c] = byCompany[c] || []).push(x); });
+    const companies = Object.keys(byCompany).sort();
+    const companyBlocks = companies.map(c => {
+      const projs = byCompany[c];
+      const byYear = {};
+      projs.forEach(x => { const y = x.year || String(new Date(x.completed || Date.now()).getFullYear()); (byYear[y] = byYear[y] || []).push(x); });
+      const years = Object.keys(byYear).sort((a, b) => b - a);
+      const rows = years.map(y => byYear[y].map(x => `<tr onclick="openArchivedProject('${esc(x.id)}')">
         <td><b>${esc(x.name)}</b><br><span style="color:#64748b">${esc(x.id)} · ${esc(x.sector)}</span></td>
         <td>${esc(x.client)}</td>
         <td>${money(x.contractValue)}</td>
+        <td>${esc(y)}</td>
         <td>${esc(x.completed)}</td>
         <td><span class="pill green">${esc(x.retentionReleased)}</span></td>
         <td style="color:#64748b;font-size:12px">${esc(x.summary)}</td>
-        <td><div style="display:flex;gap:6px;flex-wrap:wrap">${docLinks}</div></td>
-      </tr>`;
+        <td><div style="display:flex;gap:6px;flex-wrap:wrap" onclick="event.stopPropagation()">${docLinks(x)}</div></td>
+      </tr>`).join('')).join('');
+      return `<div class="archive-company" style="margin-bottom:22px">
+        <div class="archive-company-head" style="display:flex;align-items:center;gap:12px;margin-bottom:10px;cursor:pointer" onclick="location.href='31_Company.html?company='+encodeURIComponent('${esc(c)}')" title="Open ${esc(c)} folder">
+          <span class="company-folder-icon" style="width:36px;height:36px;font-size:17px">📁</span>
+          <h3 style="margin:0;font-size:18px;color:#0a0a0a">${esc(c)}</h3>
+          <span class="pill blue">${projs.length} completed</span>
+          <span style="color:#0a0a0a;font-size:12px;font-weight:800">Open folder →</span>
+        </div>
+        <table class="file-table"><thead><tr><th>Project</th><th>Client</th><th>Value</th><th>Year</th><th>Completed</th><th>Retention</th><th>Summary</th><th>Documents</th></tr></thead><tbody>${rows || '<tr><td colspan="8" class="empty">No completed projects.</td></tr>'}</tbody></table>
+      </div>`;
     }).join('');
-    t.innerHTML = `<table class="file-table"><thead><tr><th>Project</th><th>Client</th><th>Value</th><th>Completed</th><th>Retention</th><th>Summary</th><th>Documents</th></tr></thead><tbody>${rows}</tbody></table>`;
+    t.innerHTML = companyBlocks;
     staggerRows(t);
   }
 }
@@ -1857,7 +2495,9 @@ function archiveProject(id){
   if (!confirm(`Archive "${p.name}"?\n\nThis moves the completed project out of the active portfolio into the Archive, where its documents remain retrievable.`)) return;
   const rec = {
     id: p.id, name: p.name, client: p.client, sector: p.sector, location: p.location,
-    pm: p.pm, contractValue: p.contractValue, completed: p.plannedEnd || p.forecast || todayStr(),
+    company: p.company || '', pm: p.pm, contractValue: p.contractValue,
+    completed: p.plannedEnd || p.forecast || todayStr(),
+    year: p.year || String(new Date().getFullYear()),
     closed: todayStr(), retentionReleased:'Yes',
     summary:'Archived from active portfolio at close-out.',
     docs: DOCUMENTS.filter(d => d.projectId === p.id).map(d => d.file).filter(Boolean)
@@ -2187,6 +2827,149 @@ function recordVendorPayment(){
 }
 
 /* ============================================================
+   COMPANY PAGE (31) — dedicated per-company view.
+   Clicking a company folder navigates here (?company=…). Shows only
+   that company's KPIs, overview, active projects, completed history,
+   attention items and recent documents — minimal & concise.
+   ============================================================ */
+let currentCompany = '';
+
+function companyProjects() {
+  return PROJECTS.filter(p => (p.company || '') === currentCompany);
+}
+function companyArchived() {
+  return ARCHIVE.concat(ZCC.archive()).filter(x => (x.company || '') === currentCompany);
+}
+
+function renderCompanyPage() {
+  currentCompany = new URLSearchParams(location.search).get('company') || '';
+  const projs = companyProjects();
+  const archived = companyArchived();
+
+  /* header */
+  const t = $('companyTitle'); if (t) t.textContent = currentCompany || 'Company';
+  const sub = $('companySub');
+  if (sub) sub.textContent = projs.length
+    ? `${projs.length} active project${projs.length===1?'':'s'} · ${archived.length} completed`
+    : `${archived.length} completed project${archived.length===1?'':'s'}`;
+  const pill = $('companyPill'); if (pill) pill.textContent = currentCompany || 'Company';
+  const tag = $('companyScopeTag'); if (tag) tag.textContent = currentCompany;
+
+  /* Sections that only make sense when there ARE active projects are hidden
+     for an all-completed company (no meaningless 0s / empty health cards). */
+  const hasActive = projs.length > 0;
+  [['companyKpis', hasActive], ['companyExec', hasActive], ['companyProjects', hasActive],
+   ['companyAttention', hasActive]].forEach(([id, show]) => {
+    const el = $(id); if (el) el.style.display = show ? '' : 'none';
+  });
+
+  /* KPIs scoped to this company */
+  const k = $('companyKpis');
+  if (k && hasActive) {
+    const value = projs.reduce((a, p) => a + (p.contractValue || 0), 0);
+    const delayed = projs.filter(p => p.status !== 'Green').length;
+    const stuck = projs.filter(p => p.daysInStage > 14).length;
+    const stale = projs.filter(p => p.freshness === 'Stale').length;
+    const avg = projs.length ? Math.round(projs.reduce((a, p) => a + (p.actual || 0), 0) / projs.length) : 0;
+    k.innerHTML = [
+      ['Active Projects', projs.length, 'int'],
+      ['Portfolio Value', value, 'money'],
+      ['Avg Progress', avg, 'pct'],
+      ['Delayed / Watchlist', delayed, 'int'],
+      ['Stages >14 Days', stuck, 'int'],
+      ['Stale Updates', stale, 'int']
+    ].map(x => `<div class="kpi"><span>${x[0]}</span><b data-target="${x[1]}" data-kind="${x[2]}">0</b></div>`).join('');
+    k.querySelectorAll('b').forEach(runCounter);
+    staggerChildren(k, 55, 8);
+  }
+
+  /* overview: health, files, payments, compliance — scoped (active only) */
+  const st = $('execStatus');
+  if (st && hasActive) {
+    const count = s => projs.filter(p => p.status === s).length;
+    const bar = (label, n, color) => `<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px"><b>${label}</b><span style="color:#64748b">${n} of ${projs.length||1}</span></div><div style="height:10px;border-radius:99px;background:#eef2f7;overflow:hidden"><div class="an-fill" style="height:10px;width:${projs.length ? (n / projs.length * 100) : 0}%;background:${color};border-radius:99px"></div></div></div>`;
+    st.innerHTML = projs.length
+      ? bar('Green', count('Green'), '#16a34a') + bar('Amber', count('Amber'), '#f59e0b') + bar('Red', count('Red'), '#dc2626')
+      : '<div class="empty">No active projects</div>';
+    animateBars(st);
+  }
+  const fp = $('execFiles');
+  if (fp && hasActive) {
+    const rows = FILE_TRACKING.filter(t => t.status !== 'Green' && projs.some(p => p.id === t.projectId)).slice(0, 5)
+      .map(t => `<div class="att-item" onclick="openProject('${t.projectId}')"><span class="dot ${cls(t.status)}"></span><div><h4 style="font-size:13px">${esc(t.project)}</h4><p>File at ${esc(t.office)} · ${t.daysInStage}d (SLA ${t.expectedDays}d)</p></div><span class="pill ${cls(t.status)}">${t.status}</span></div>`).join('');
+    fp.innerHTML = rows || '<div class="empty">No file bottlenecks. ✅</div>';
+  }
+  const pm = $('execPayments');
+  if (pm && hasActive) {
+    const t = projs.reduce((a, p) => { const c = costInfo(p); a.certified+=c.certified; a.paid+=c.paid; a.outstanding+=c.outstanding; a.retention+=c.retention; return a; }, { certified:0, paid:0, outstanding:0, retention:0 });
+    const collect = t.certified ? Math.round(t.paid / t.certified * 100) : 0;
+    const kpis = [['Certified', t.certified, '#0a0a0a'], ['Paid', t.paid, '#16a34a'], ['Outstanding', t.outstanding, t.outstanding?'#dc2626':'#0a0a0a'], ['Retention', t.retention, '#0a0a0a']]
+      .map(([lab, v, col]) => `<div style="display:flex;justify-content:space-between;padding:6px 0;font-size:13px"><b style="color:${col}">${esc(lab)}</b><b>${money(v)}</b></div>`).join('');
+    pm.innerHTML = kpis + `<div style="margin:4px 0 4px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><b>Collection rate</b><span>${collect}%</span></div></div>`;
+  }
+  const cd = $('execCompliance');
+  if (cd && hasActive) {
+    const mine = COMPLIANCE.filter(c => (c.applies || '').toUpperCase().includes(currentCompany.toUpperCase()) || !currentCompany);
+    cd.innerHTML = (mine.length ? mine : COMPLIANCE).slice().sort((a,b)=>a.expInDays-b.expInDays).slice(0,5).map(c => {
+      const b = expiryBand(c.expInDays);
+      return `<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px dashed var(--line)"><span style="font-size:13px">${esc(c.item)}</span><span class="pill ${b.cls}">${c.expInDays < 0 ? 'Expired' : c.expInDays + 'd'}</span></div>`;
+    }).join('') || '<div class="empty">No compliance items</div>';
+  }
+
+  /* active projects grid */
+  const grid = $('companyProjectGrid');
+  const psub = $('companyProjectsSub');
+  if (grid && hasActive) {
+    grid.innerHTML = projs.map(card).join('') || '<div class="empty" style="grid-column:1/-1">No active projects.</div>';
+    staggerChildren(grid, 55, 9);
+    animateFills(grid);
+  }
+  if (psub) psub.textContent = projs.length ? `${projs.length} active project${projs.length===1?'':'s'} currently running.` : '';
+
+  /* completed history (year-grouped, minimal) */
+  const comp = $('companyCompleted');
+  if (comp) {
+    if (!archived.length) { comp.innerHTML = ''; }
+    else {
+      const byYear = {};
+      archived.forEach(x => { const y = x.year || String(new Date(x.completed||Date.now()).getFullYear()); (byYear[y]=byYear[y]||[]).push(x); });
+      const years = Object.keys(byYear).sort((a,b)=>b-a);
+      const docLinks = x => (x.docs||[]).map(f => `<a class="download-btn" href="${esc(f)}" target="_blank">Doc</a>`).join(' ');
+      comp.innerHTML = `<div class="section-head"><div><h2>Completed</h2><p>${archived.length} completed projects, by year. Click any row to view full details.</p></div></div>` +
+        years.map(y => `<div style="margin-bottom:16px"><h3 style="margin:0 0 8px;font-size:16px;color:#0a0a0a">${y} <span style="color:#64748b;font-size:12px">· ${byYear[y].length} completed</span></h3><table class="file-table"><thead><tr><th>Project</th><th>Photo</th><th>Client</th><th>Value</th><th>Retention</th><th>Docs</th></tr></thead><tbody>` +
+          byYear[y].map(x => {
+            const ph = (PROJECT_PHOTO && PROJECT_PHOTO[x.id]) || [];
+            const thumbs = ph.length ? `<div class="thumb-row">${ph.slice(0,3).map(u => `<img class="photo-thumb" src="${esc(u)}" alt="${esc(x.name)}" onclick="event.stopPropagation();window.open('${esc(u)}','_blank')">`).join('')}</div>` : '<span style="color:#64748b;font-size:11px">—</span>';
+            return `<tr onclick="openArchivedProject('${esc(x.id)}')"><td><b>${esc(x.name)}</b><br><span style="color:#64748b">${esc(x.id)} · ${esc(x.sector)}</span></td><td>${thumbs}</td><td>${esc(x.client)}</td><td>${money(x.contractValue)}</td><td><span class="pill green">${esc(x.retentionReleased)}</span></td><td><div style="display:flex;gap:6px;flex-wrap:wrap" onclick="event.stopPropagation()">${docLinks(x)}</div></td></tr>`;
+          }).join('') +
+          `</tbody></table></div>`).join('');
+    }
+  }
+
+  /* management attention — scoped */
+  const att = $('companyAttentionList');
+  if (att) {
+    const arr = projs.filter(p => p.status !== 'Green' || p.escalate === 'Yes' || p.freshness === 'Stale' || p.daysInStage > 14)
+      .sort((a,b) => orderStatus(b.status)-orderStatus(a.status) || b.delayDays-a.delayDays);
+    att.innerHTML = arr.length ? arr.map(p => `<div class="att-item" onclick="openProject('${p.id}')"><span class="dot ${cls(p.status)}"></span><div><h4>${esc(p.name)}</h4><p>${esc(p.issue)}<br><b>Action:</b> ${esc(p.action)}</p></div><div style="text-align:right"><span class="pill ${cls(p.status)}">${p.status}</span><br><span style="color:#64748b;font-size:12px">${p.delayDays} days</span></div></div>`).join('') : '<div class="empty">No attention items. ✅</div>';
+    staggerChildren(att, 60, 8);
+  }
+
+  /* recent documents — scoped to this company's project ids */
+  const ids = new Set(projs.map(p => p.id));
+  const du = $('docUploads');
+  if (du) {
+    const rows = DOCUMENTS.filter(d => ids.has(d.projectId)).slice().sort((a,b) => String(b.uploadedAt||b.date).localeCompare(String(a.uploadedAt||a.date))).map(d => {
+      const fileCell = d.file && d.file !== '#' && d.file !== ''
+        ? `<div style="display:flex;gap:8px;flex-wrap:wrap" onclick="event.stopPropagation()"><a class="download-btn" href="${esc(d.file)}" target="_blank">Open</a><a class="download-btn primary" href="${esc(d.file)}" download>Download</a></div>`
+        : '<span style="color:#64748b;font-size:12px">No file</span>';
+      return `<tr><td><b>${esc(d.title)}</b><br><span style="color:#64748b">${esc(d.documentId)} · ${esc(d.type)}</span></td><td>${esc(d.projectName)}</td><td><b>${esc(d.owner)}</b></td><td><span style="color:#475569">${esc(d.uploadedAt||d.date)}</span></td><td>${fileCell}</td></tr>`;
+    }).join('');
+    du.innerHTML = rows.length ? `<table class="file-table"><thead><tr><th>Document</th><th>Project</th><th>Uploaded By</th><th>Timestamp</th><th>File</th></tr></thead><tbody>${rows}</tbody></table>` : '<div class="empty">No documents for this company yet.</div>';
+  }
+}
+
+/* ============================================================
    LOGIN (00_Login.html)
    ============================================================ */
 function attemptLogin() {
@@ -2245,7 +3028,30 @@ function boot() {
   TASKS = ZCC.tasks();
   currentUser = user.name;
 
+  /* role-restricted page guard — e.g. the MD-only document archive.
+     Redirects anyone without the required role to their home portal. */
+  if (PAGE_ACCESS[page] && !PAGE_ACCESS[page].includes(user.role)) {
+    location.href = ZCC.homeFor(user); return;
+  }
+
   buildShell(user, app, page);
+  bindGlobalSearch();
+  /* render the shared company-folder strip if present on this page */
+  if ($('companyStrip')) renderCompanyFolders();
+
+  /* Google Sheet data source (Trev-style). Loads pilot/sheet data then
+     re-renders so sheet changes appear without redeploy. */
+  if (typeof loadZonexaSheet === 'function') {
+    loadZonexaSheet().then(() => {
+      if ($('companyStrip') || document.getElementById('companyGrid')) renderCompanyFolders();
+      if (page === 'dashboard') { renderKpis(); renderAttention(); renderExecutiveSummary(); renderEscalationCount(); renderNotificationBell(); }
+      if (page === 'projects') renderProjects();
+      if (page === 'archive') renderArchive();
+      if (page === 'company') renderCompanyPage();
+      if (page === 'documents') { renderFileTable(); renderDocRegister(); }
+      if (page === 'doc-manage') renderDocManage();
+    });
+  }
 
   const mainEl = document.querySelector('main.main');
   staggerChildren(mainEl, 70, 5);
@@ -2258,16 +3064,20 @@ function boot() {
   switch (page) {
     /* ---- Command Center ---- */
     case 'dashboard':
-      renderKpis(); populate(); renderProjects(); renderAttention(); bindCC();
+      renderKpis(); populate(); renderCompanyFolders(); renderAttention(); bindCC();
       renderDocUploads();
       renderCloseArchive();
       renderExecutiveSummary();
+      renderEscalationCount();
+      renderNotificationBell();
       if (user.role === 'MD') { const a = $('approvals'); if (a) a.style.display = 'block'; renderApprovalsInbox(); }
       break;
     case 'projects':
-      populate(); renderProjects(); bindCC(); break;
+      populate(); renderCompanyFolders(); renderProjects(); bindCC(); break;
     case 'documents':
-      renderFileTable(); renderDocRegister(); bindCC(); break;
+      renderFileTable(); renderDocRegister(); bindDocSearch(); bindCC(); break;
+    case 'doc-manage':
+      renderDocManage(); bindCC(); break;
     case 'progress':
       renderScheduleTable(); bindCC(); break;
     case 'risks':
@@ -2301,6 +3111,8 @@ function boot() {
       renderArchive(); bindCC(); break;
     case 'constr-analytics':
       renderConstrAnalytics(); bindCC(); break;
+    case 'company':
+      renderCompanyPage(); bindCC(); break;
     /* ---- Staff Workspace ---- */
     case 'staff-dash':
       renderStaffHero(user); renderStaffKpis(); renderPriorityTasks(); renderTaskOptions();
@@ -2323,7 +3135,9 @@ function boot() {
       fillProjectOptions('mvProject'); renderFileTracking(); bindCC(); break;
     /* ---- Accounts Portal ---- */
     case 'accounts-dash':
-      fillProjectOptions('payProject'); renderAccountsDash(); fillVpProjects(); renderVendorPayments(); initVendorPayForm(); bindCC(); break;
+      fillProjectOptions('payProject'); fillProjectOptions('acctDocProject');
+      renderAccountsDash(); fillVpProjects(); renderVendorPayments(); initVendorPayForm();
+      renderDocUploads(); bindCC(); break;
     case 'accounts-ret':
       renderRetentionRegister(); bindCC(); break;
     /* ---- Admin Console ---- */
