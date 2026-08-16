@@ -748,23 +748,11 @@ body:not(.staff) .pd-opt.active{color:#4a3fb0}
   .portal-dd-menu{position:fixed;left:10px;right:10px;top:64px;flex-wrap:wrap;justify-content:center}
 }
 
-/* portals dropdown in page header */
+/* Portal switching is now handled by the single ☰ hamburger menu in the
+   top bar. The old header portal dropdown (and its high z-index that kept
+   the page-head above the topbar, covering the notification menu) is gone.
+   The topbar keeps a normal z-index so its dropdowns sit above page content. */
 .zcc-page-head{position:relative}
-.ph-actions{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0}
-.ph-actions .portal-dd{margin-left:0}
-@media(max-width:700px){
-  .ph-actions{width:100%;justify-content:flex-start;margin-top:10px}
-  .portal-dd-menu{position:fixed;left:10px;right:10px;top:64px;flex-wrap:wrap;justify-content:center}
-}
-
-/* --- Fix: dropdown appears BEHIND page content --- */
-.zcc-page-head{overflow:visible;z-index:90}
-.ph-actions{position:relative;z-index:95}
-.portal-dd{z-index:96}
-.portal-dd-menu{z-index:97!important;position:absolute;top:calc(100% + 8px);right:0}
-/* keep the header content above the page body while menu open */
-.main{z-index:1}
-@media(max-width:768px){.portal-dd-menu{position:fixed;top:64px}}
 
 /* ============================================================
    ZONEXA — MONOCHROME FINAL OVERRIDES
@@ -1012,6 +1000,12 @@ body[data-app] .zcc-page-head h1::after{background:linear-gradient(100deg,transp
 .notif-badge{position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;border-radius:999px;background:#dc2626;color:#fff;font-size:11px;font-weight:800;align-items:center;justify-content:center;padding:0 5px}
 .notif-menu{position:absolute;top:48px;right:0;width:min(380px,86vw);background:#fff;border:1px solid var(--hairline,rgba(10,10,10,.15));border-radius:14px;box-shadow:0 18px 40px rgba(0,0,0,.14);opacity:0;pointer-events:none;transform:translateY(-6px);transition:.16s;z-index:60;max-height:70vh;overflow:auto}
 .notif-menu.open{opacity:1;pointer-events:auto;transform:translateY(0)}
+.portal-hamb-wrap{position:relative}
+.portal-hamb-menu{position:absolute;top:48px;right:0;width:min(240px,80vw);background:#fff;border:1px solid var(--hairline,rgba(10,10,10,.2));border-radius:12px;box-shadow:0 16px 36px rgba(0,0,0,.14);opacity:0;pointer-events:none;transform:translateY(-6px);transition:.16s;z-index:60;padding:6px;display:flex;flex-direction:column;gap:2px}
+.portal-hamb-menu.open{opacity:1;pointer-events:auto;transform:translateY(0)}
+.portal-hamb-menu .pd-opt{justify-content:flex-start;gap:9px}
+.portal-hamb-menu .pd-opt-ic{display:inline-flex;width:22px;color:#0a0a0a}
+@media(max-width:560px){.portal-hamb-menu{right:-4px}}
 .notif-item{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-bottom:1px solid var(--hairline,rgba(10,10,10,.08));font-size:13px;line-height:1.45;cursor:pointer}
 .notif-item:last-child{border-bottom:none}
 .notif-item:hover{background:#f7f7f7}

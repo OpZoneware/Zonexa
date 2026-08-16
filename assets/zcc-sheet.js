@@ -17,10 +17,47 @@
 const SHEET_ID = '1ed7wUQXne4iUKu0M7dO1X9CpjPMJzwUIm47vGLg_S8I';   // Zonexa sheet, e.g. '1cDi8Vf3OEwc6Mmh2pWixr12Gz1_1RuNkG93uF7fjbyA'
 const SHEET_ACTIVE = !!SHEET_ID; // becomes true once an id is set
 
+/* Web app endpoint (AppScript) — enables portal buttons to write back
+   to the sheet. Paste the deployed Web app URL here, e.g.
+   'https://script.google.com/macros/s/AKfy.../exec' */
+const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwCymNtoRu_gjw48cRn0WETjbP8-cB4YmRmzf7X6a3OugdtHAvRICxa4Ywhc3DDZNh2/exec';   // <-- deployed Web app URL
+const WRITE_BACK = !!WEB_APP_URL;
+
+/* Call the Apps Script web app to update the sheet. Returns a promise. */
+async function sheetWrite(payload) {
+  if (!WRITE_BACK) throw new Error('Web app not configured (WEB_APP_URL empty).');
+  const res = await fetch(WEB_APP_URL, {
+    method: 'POST',
+    mode: 'no-cors',   // Apps Script doesn't return CORS headers; we can't read the body
+    headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify(payload)
+  });
+  return true; // no-cors: success = request didn't throw
+}
+
+/* Best-effort write-back to the sheet. Never throws / never blocks the UI.
+   Because the web app uses no-cors we can't read its response, so we only
+   know the request was sent — not whether the sheet actually changed. */
+async function sheetWriteSafe(payload, label){
+  if (!WRITE_BACK) return;
+  try {
+    await sheetWrite(payload);
+  } catch (e) {
+    if (typeof toast === 'function') toast('Sheet write failed (' + (label || '') + '): ' + (e && e.message ? e.message : e), 'error');
+  }
+}
+
+/* Convert a Drive link to a clean file id (for the Documents tab DriveLink col). */
+function driveLinkId(link){
+  if (!link) return '';
+  const m = String(link).match(/[-\w]{25,}/);
+  return m ? m[0] : String(link).trim();
+}
+
 function sheetFeedUrl(tab){
   return `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(tab)}`;
 }
-https://script.google.com/macros/s/AKfycbwCymNtoRu_gjw48cRn0WETjbP8-cB4YmRmzf7X6a3OugdtHAvRICxa4Ywhc3DDZNh2/exec
+
 /* Parse the gviz JSONP response into an array of row objects. */
 function parseGviz(json){
   // response is jsonp:  google.visualization.Query.setResponse({...});
@@ -81,6 +118,23 @@ function sheetToDoc(row){
   };
 }
 
+/* Map a row from the SOP tab into the SOP library model.
+   Columns you type in the sheet: id, title, version, owner, review,
+   applies, summary, file (a Drive link or file path). */
+function sheetToSop(row){
+  if (!row.id && !row.title) return null;
+  return {
+    id: row.id || ('SOP-' + String(Math.abs(Date.now())).slice(-3)),
+    title: row.title || row.id,
+    version: Number(row.version) || 1,
+    owner: row.owner || 'Contract Lead',
+    review: row.review || 'Annually',
+    applies: row.applies || 'All projects',
+    summary: row.summary || '',
+    file: row.file || row.drive_link || '#'
+  };
+}
+
 /* The pilot seed (Eko Boys Fence) — used when the sheet isn't
    configured yet, so the mechanism is demonstrable offline.
    In production this mirrors exactly what you'd type in the sheet. */
@@ -110,11 +164,13 @@ const PILOT_SEED = {
 /* Load sheet data (or the pilot seed) and merge into the global model.
    Returns a promise. If SHEET_ID is set, uses the sheet; else the seed. */
 async function loadZonexaSheet(){
-  let companies = [], projects = [], documents = [];
+  let companies = [], projects = [], documents = [], sops = [], payments = [];
   if (SHEET_ACTIVE) {
     companies = await fetchSheetTab('Companies');
     projects = await fetchSheetTab('Projects');
     documents = await fetchSheetTab('Documents');
+    sops = await fetchSheetTab('SOP');
+    payments = await fetchSheetTab('Payments');
   } else {
     companies = PILOT_SEED.companies;
     projects = PILOT_SEED.projects;
@@ -148,5 +204,25 @@ async function loadZonexaSheet(){
     else DOCUMENTS.push(d);
   });
 
-  return { companies, projects, documents };
+  // SOP library → replace the registry with the sheet's rows (like the
+  // award-letter drive links, the file column takes a Drive link/path).
+  if (sops.length) {
+    const mapped = sops.map(sheetToSop).filter(Boolean);
+    if (mapped.length && typeof SOP_REGISTRY !== 'undefined') {
+      SOP_REGISTRY.splice(0, SOP_REGISTRY.length, ...mapped);
+    }
+  }
+
+  // Payments tab → feed certified/paid/retention/outstanding into COST_DATA
+  // so every cost/payment view (Payments page, Accounts portal, project
+  // cost tab, archived-project payment position) reflects the sheet.
+  payments.forEach(r => {
+    const pid = r.projectid; if (!pid) return;
+    const d = COST_DATA[pid] || (COST_DATA[pid] = {});
+    if (r.certified != null && r.certified !== '') d.certified = Number(String(r.certified).replace(/[^\d.]/g, '')) || 0;
+    if (r.paid != null && r.paid !== '') d.paid = Number(String(r.paid).replace(/[^\d.]/g, '')) || 0;
+    if (r.retention != null && r.retention !== '') d.retention = Number(String(r.retention).replace(/[^\d.]/g, '')) || 0;
+  });
+
+  return { companies, projects, documents, sops, payments };
 }

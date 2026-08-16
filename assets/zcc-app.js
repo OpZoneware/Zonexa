@@ -141,7 +141,6 @@ const NAV = {
       ['risks',      'Risks',       '05_Risks.html', 'warn'],
       ['payments',   'Payments',    '06_Payments.html', 'cash'],
       ['sitephotos', 'Site Photos', '07_Site_Photos.html', 'camera'],
-      ['analytics',  'Analytics',   '08_Analytics.html', 'trend'],
       ['admin',      'System Admin', '09_Admin.html', 'sliders'],
       ['sop',        'SOP & Compliance', '16_SOP_Compliance.html', 'clip'],
       ['approval-workflow','File & Approvals', '21_Approval_Workflow.html', 'trend'],
@@ -150,7 +149,6 @@ const NAV = {
       ['integrations','Integrations', '25_Integrations.html', 'file'],
       ['vendors',    'Vendor Register', '27_Vendor_Register.html', 'user'],
       ['archive',    'Project Archive', '28_Project_Archive.html', 'folder'],
-      ['constr-analytics', 'Construction Analytics', '29_Construction_Analytics.html', 'chart'],
     ]
   },
   staff: {
@@ -190,7 +188,9 @@ const NAV = {
    sidebar). buildShell hides the nav link and boot blocks direct
    navigation for everyone else. */
 const PAGE_ACCESS = {
-  archive: ['MD', 'Contract Lead']   /* archive viewable by MD + Contract Lead */
+  archive: ['MD', 'Contract Lead', 'Digital Ops'],   /* archive viewable by MD + Contract Lead + Digital Ops */
+  'admin-console': ['Super Admin', 'Digital Ops'],  /* Admin Console = Super Admin + Digital Ops */
+  'doc-manage': ['MD', 'Contract Lead', 'Super Admin', 'Digital Ops']  /* digital ops / doc control */
 };
 
 /* Is the signed-in user the Managing Director? MD-only capabilities
@@ -223,44 +223,9 @@ const TAB_LABEL = {
 let currentApp = 'cc';
 let activeProjectId = null;
 
-/* Horizontal portals dropdown for the top bar (every page).
-   Shows the current portal; opens a horizontal row of portal pills. */
-function portalDropdown(user, app) {
-  if (!user) return '';
-  const portals = ZCC.portalsFor(user);
-  if (!portals || portals.length < 2) return '';
-  const cur = PORTALS[app] ? PORTALS[app].title : app;
-  const label = p => PORTALS[p] ? PORTALS[p].title : p;
-  const options = portals.map(p =>
-    `<a class="pd-opt${p === app ? ' active' : ''}" href="${PORTALS[p].home}">${esc(label(p))}</a>`
-  ).join('');
-  return `<div class="portal-dd" id="portalDD">
-      <button class="portal-dd-btn" onclick="togglePortalDD(event)" aria-label="Portals">
-        <span class="pd-current">${esc(cur)}</span><span class="pd-caret">▾</span>
-      </button>
-      <div class="portal-dd-menu" id="portalDDMenu">${options}</div>
-    </div>`;
-}
-function togglePortalDD(e){
-  if (e && e.stopPropagation) e.stopPropagation();
-  const m = document.getElementById('portalDDMenu');
-  if (m) m.classList.toggle('open');
-}
-document.addEventListener('click', () => {
-  const m = document.getElementById('portalDDMenu');
-  if (m) m.classList.remove('open');
-});
-
-function portalSwitcher(user, app) {
-  if (!user) return '';
-  const portals = ZCC.portalsFor(user);
-  if (!portals || portals.length < 2) return '';
-  const label = p => PORTALS[p] ? PORTALS[p].title : p;
-  const rows = portals.map(p =>
-    `<a class="sidebar-portal${p === app ? ' active' : ''}" href="${PORTALS[p].home}">${esc(label(p))}</a>`
-  ).join('');
-  return `<div class="sidebar-portals"><div class="sidebar-portals-label">⇄ Portals</div><div class="sidebar-portals-grid">${rows}</div></div>`;
-}
+/* Portal switching is handled by the single ☰ hamburger menu in the top bar
+   (togglePortalMenu). The old header dropdown and sidebar switcher were
+   removed to keep exactly one way to switch portals. */
 
 function buildShell(user, app, page) {
   currentApp = app;
@@ -307,7 +272,10 @@ function buildShell(user, app, page) {
        </button>
        <div class="notif-menu" id="notifMenu"></div>
      </div>` +
-    `<button class="topbar-hamburger" id="hamburgerBtn" onclick="toggleSidebar()" aria-label="Menu">☰</button>`;
+    `<div class="portal-hamb-wrap">
+       <button class="topbar-hamburger" id="hamburgerBtn" onclick="togglePortalMenu(event)" aria-label="Switch portal" title="Switch portal">☰</button>
+       <div class="portal-hamb-menu" id="portalHambMenu"></div>
+     </div>`;
 
   const overlay = document.createElement('div');
   overlay.className = 'sidebar-overlay';
@@ -318,18 +286,6 @@ function buildShell(user, app, page) {
   document.body.prepend(topbar);
   document.body.prepend(aside);
   initGlider();
-
-  /* inject horizontal portals dropdown into the page header (every page) */
-  const ph = document.querySelector('.zcc-page-head');
-  if (ph) {
-    const dd = portalDropdown(user, app);
-    if (dd) {
-      const wrap = document.createElement('div');
-      wrap.className = 'ph-actions';
-      wrap.innerHTML = dd;
-      ph.appendChild(wrap);
-    }
-  }
 
   /* Company folder strip — injected on every operational page that does NOT
      already have its own company section (login/report skipped). Gives
@@ -369,6 +325,25 @@ function toggleSidebar() {
   const sb = $('sidebar'), ov = $('sidebarOverlay');
   if (sb) sb.classList.toggle('open');
   if (ov) ov.classList.toggle('show');
+}
+
+/* Hamburger = portal switcher (MD space). Lists the signed-in user's
+   portals and jumps to each one's home. Falls back to the sidebar toggle
+   when the user only has a single portal. */
+function togglePortalMenu(e) {
+  if (e && e.stopPropagation) e.stopPropagation();
+  const user = ZCC.user();
+  const portals = user ? ZCC.portalsFor(user) : [];
+  const menu = $('portalHambMenu');
+  if (!menu) return;
+  if (menu.classList.contains('open')) { menu.classList.remove('open'); return; }
+  if (!portals || portals.length < 2) { toggleSidebar(); return; }
+  menu.innerHTML = portals.map(p =>
+    `<a class="pd-opt${p === currentApp ? ' active' : ''}" href="${PORTALS[p] ? PORTALS[p].home : '#'}">
+       <span class="pd-opt-ic">${icon(p === 'cc' ? 'home' : p === 'staff' ? 'user' : p === 'contract' ? 'file' : p === 'accounts' ? 'cash' : 'sliders', 15)}</span>
+       <span>${esc(PORTALS[p] ? PORTALS[p].title : p)}</span>
+     </a>`).join('');
+  menu.classList.add('open');
 }
 
 /* sliding highlight that glides under the active/hovered sidebar link */
@@ -611,6 +586,7 @@ function handleNotif(i) {
 document.addEventListener('click', (e) => {
   const menu = $('notifMenu'); if (menu) menu.classList.remove('open');
   const res = $('gsearchResults'); if (res) res.classList.remove('open');
+  const ph = $('portalHambMenu'); if (ph) ph.classList.remove('open');
 });
 
 /* -------- Global search (top bar) --------
@@ -631,7 +607,6 @@ function globalSearchResults(q) {
     { title: 'Risks', kw: 'risks risk register', href: '05_Risks.html', desc: 'Risk register and mitigations.' },
     { title: 'Payments', kw: 'payments certified paid outstanding retention', href: '06_Payments.html', desc: 'Cost and payment position.' },
     { title: 'Site Photos', kw: 'site photos evidence', href: '07_Site_Photos.html', desc: 'Site photo evidence.' },
-    { title: 'Analytics', kw: 'analytics charts spi status freshness', href: '08_Analytics.html', desc: 'Portfolio analytics.' },
     { title: 'System Admin', kw: 'admin users stages documents types', href: '09_Admin.html', desc: 'Users, stages and document types.' },
     { title: 'SOP & Compliance', kw: 'SOP compliance BPP expiry renewal', href: '16_SOP_Compliance.html', desc: 'SOP library and compliance register.' },
     { title: 'File & Approvals', kw: 'approval workflow file journey tracker', href: '21_Approval_Workflow.html', desc: 'Approval workflow and file tracking.' },
@@ -640,7 +615,6 @@ function globalSearchResults(q) {
     { title: 'Integrations', kw: 'integrations email whatsapp captured', href: '25_Integrations.html', desc: 'Email/WhatsApp capture.' },
     { title: 'Vendor Register', kw: 'vendors vendor register supplier', href: '27_Vendor_Register.html', desc: 'Vendor register.' },
     { title: 'Project Archive', kw: 'archive completed close-out retention released', href: '28_Project_Archive.html', desc: 'Completed projects, grouped by company.' },
-    { title: 'Construction Analytics', kw: 'construction analytics cost forecast cash flow gantt risk heat', href: '29_Construction_Analytics.html', desc: 'Cost forecast, cash flow, Gantt and risk heat map.' },
     { title: 'Accounts Portal', kw: 'accounts payments collection vendor payments', href: '17_Accounts_Dashboard.html', desc: 'Accounts dashboard and collections.' },
     { title: 'Retention Register', kw: 'retention register retention held', href: '18_Retention_Register.html', desc: 'Retention register.' },
     { title: 'Payment Requisitions', kw: 'requisitions payment request approval spend', href: '24_Payment_Requisitions.html', desc: 'Internal payment requisitions and spend authority.' },
@@ -800,6 +774,7 @@ function saveDocEdit() {
   const before = JSON.stringify({ title: d.title, type: d.type, stage: d.stage, owner: d.owner, status: d.status, date: d.date });
   d.title = title; d.type = type; d.stage = stage; d.owner = owner; d.status = status; d.date = date;
   ZCC.snapshot(); ZCC.logAudit(whoami(), 'DOCUMENT_EDIT', `${d.documentId} changed ${before} → ${JSON.stringify({ title, type, stage, owner, status, date })}`);
+  if (typeof sheetWriteSafe === 'function') sheetWriteSafe({ action:'updateDocument', docId: d.documentId, title, type, stage, date }, 'edit controlled doc');
   if (err) err.innerHTML = `<span style="color:#16a34a">✔ Changes saved and audited for ${esc(d.documentId)}.</span>`;
   toast('Document updated: ' + d.documentId);
   cancelDocEdit();
@@ -815,6 +790,7 @@ function deleteDocument(id) {
   if (!confirm(`Delete controlled document ${id} — "${d.title}"?\n\nOnly the Managing Director can delete controlled documents. This is irreversible and is recorded in the audit trail.`)) return;
   const i = DOCUMENTS.findIndex(x => x.documentId === id); if (i > -1) DOCUMENTS.splice(i, 1);
   ZCC.snapshot(); ZCC.logAudit(whoami(), 'DOCUMENT_DELETE', id + ' · ' + d.title);
+  if (typeof sheetWriteSafe === 'function') sheetWriteSafe({ action:'deleteDocument', docId: id }, 'delete controlled doc');
   toast('Document deleted: ' + id, 'info');
   cancelDocEdit();
   renderDocRegister(); renderDocUploads(); renderFileTable();
@@ -909,16 +885,18 @@ function mdSaveNew() {
   if (!pid || !title) { if (m) m.textContent = 'Choose a project and enter a title.'; return; }
   const p = PROJECTS.find(x=>x.id===pid) || ARCHIVE.concat(ZCC.archive()).find(x=>x.id===pid);
   const ov = docOverrides();
-  const isDrive = /drive\.google\.com\/file\/d\//.test(file);
+  const isDrive = /drive\.google\.com/.test(file);   // file/d/... OR open?id=... folder link
   if (mdEditingId) {
     ov[mdEditingId] = { projectId: pid, title, type, stage: p?.stage || '', file: isDrive ? '#' : file, driveFile: isDrive ? file : '', date: todayStr() };
     saveDocOverrides(ov);
+    if (typeof sheetWriteSafe === 'function') sheetWriteSafe({ action:'updateDocument', docId: mdEditingId, title, type, stage: p?.stage || '', driveLink: isDrive ? driveLinkId(file) : '', date: todayStr() }, 'edit document');
     if (m) m.innerHTML = '<span style="color:#16a34a">✔ Updated — ' + esc(mdEditingId) + '.</span>';
     toast('Document updated: ' + mdEditingId);
   } else {
     const docId = 'DOC-' + pid + '-' + String(effectiveDocs().length + 1).padStart(3,'0');
     ov['+' + docId] = { documentId: docId, projectId: pid, projectName: p?.name || pid, client: p?.client || '', type, stage: p?.stage || '', title, date: todayStr(), file: isDrive ? '#' : file, driveFile: isDrive ? file : '', status: 'Available' };
     saveDocOverrides(ov);
+    if (typeof sheetWriteSafe === 'function') sheetWriteSafe({ action:'addDocument', docId, projectId: pid, title, type, stage: p?.stage || '', driveLink: isDrive ? driveLinkId(file) : '', date: todayStr() }, 'add document');
     if (m) m.innerHTML = '<span style="color:#16a34a">✔ Added — ' + esc(docId) + '.</span>';
     toast('Document added: ' + docId);
   }
@@ -935,14 +913,63 @@ function mdDelete(id) {
   if (ov['+'+id]) { delete ov['+'+id]; }
   else { ov[id] = { hidden: true }; }
   saveDocOverrides(ov);
+  if (typeof sheetWriteSafe === 'function') sheetWriteSafe({ action:'deleteDocument', docId: id }, 'delete document');
   toast('Document removed: ' + id, 'info');
   renderDocManage();
 }
 
+/* ---- In-place "Add folder/file" on a project's Documents tab ----
+   Only MD / Contract Lead / Digital Ops / Super Admin may add. Saves
+   through the same docOverrides store as Document Management, so the new
+   link shows everywhere. */
+function canManageDocs(){
+  const u = ZCC.user();
+  return !!(u && ['MD','Contract Lead','Digital Ops','Super Admin'].includes(u.role));
+}
+function quickAddForm(projectId, projectName, client){
+  const safe = String(projectId).replace(/[^a-zA-Z0-9]/g,'');
+  return `<div class="panel upd" id="quickAddBox${safe}" style="margin-top:12px;border:1px dashed var(--line)">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+      <b style="font-size:13px">+ Add folder / file — ${esc(projectName||projectId)}</b>
+      <button class="upd-btn" style="background:transparent" onclick="document.getElementById('quickAddBox${safe}').innerHTML=''">Cancel</button>
+    </div>
+    <div class="upd-grid" style="grid-template-columns:1fr 1fr">
+      <div class="upd-field"><label>Type</label><select id="qaType"><option>File</option><option>Folder</option></select></div>
+      <div class="upd-field"><label>Title</label><input type="text" id="qaTitle" placeholder="e.g. Receipts / Award Letter" /></div>
+      <div class="upd-field"><label>Drive Link</label><input type="text" id="qaLink" placeholder="https://drive.google.com/..." style="width:100%" /></div>
+    </div>
+    <div class="upd-row">
+      <button class="upd-btn" onclick="quickAddSave('${esc(projectId)}')">+ Add</button>
+      <span class="upd-note" id="qaMsg"></span>
+    </div>
+  </div>`;
+}
+function quickAddSave(pid){
+  const type = $('qaType')?.value, title = ($('qaTitle')?.value||'').trim(), link = ($('qaLink')?.value||'').trim();
+  const m = $('qaMsg');
+  if (!title || !link){ if(m) m.textContent='Title and link are required.'; return; }
+  const p = PROJECTS.find(x=>x.id===pid) || ARCHIVE.concat(ZCC.archive()).find(x=>x.id===pid);
+  const ov = docOverrides();
+  const isDrive = /drive\.google\.com/.test(link);
+  const n = effectiveDocs().filter(d=>d.projectId===pid).length + 1;
+  const docId = 'DOC-'+pid+'-Q'+n;
+  ov['+'+docId] = { documentId: docId, projectId: pid, projectName: p?.name||pid, client: p?.client||'', type, stage: p?.stage||'', title, date: todayStr(), file: isDrive?'#':link, driveFile: isDrive?link:'', status:'Available', owner: whoami() };
+  saveDocOverrides(ov);
+  ZCC.logAudit(whoami(), 'QUICK_ADD_DOC', `${pid} · ${type} · ${title}`);
+  /* write back to the sheet so the new folder/file is shared (Trev-style) */
+  if (typeof sheetWriteSafe === 'function') sheetWriteSafe({ action:'addDocument', docId, projectId: pid, title, type, stage: p?.stage||'', driveLink: isDrive ? driveLinkId(link) : '', date: todayStr() }, 'add folder/file');
+  if(m) m.innerHTML = '<span style="color:#16a34a">✔ Added — '+esc(docId)+'.</span>';
+  toast('Added: '+title);
+  if (PROJECTS.find(x=>x.id===pid)) openProject(pid); else openArchivedProject(pid);
+}
+
 function documentCards(p) {
-  const docs = DOCUMENTS.filter(d => d.projectId === p.id);
-  if (!docs.length) return '<div class="empty">No documents linked to this project yet.</div>';
-  return `<div class="doc-grid">${docs.map(d => { const fl = docLink(d); return `<div class="doc"><b>${esc(d.title)}</b>${d.driveFile?'<span class="pill green" style="margin-left:6px">● live</span>':''}<span>${esc(d.type)} · ${esc(d.stage)}<br>Owner: ${esc(d.owner)} · Date: ${esc(d.date)}</span><div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><a class="download-btn" href="${esc(fl)}" target="_blank">Open</a><a class="download-btn primary" href="${esc(fl)}" download>Download</a></div></div>`; }).join('')}</div>`;
+  const docs = effectiveDocs().filter(d => d.projectId === p.id);
+  const manageBtn = canManageDocs()
+    ? `<div style="margin-bottom:12px"><button class="upd-btn" onclick="document.getElementById('qaSlot').innerHTML=quickAddForm('${esc(p.id)}','${esc(p.name)}','${esc(p.client)}')">+ Add folder / file</button><div id="qaSlot"></div></div>`
+    : '';
+  if (!docs.length) return manageBtn + '<div class="empty">No documents linked to this project yet.</div>';
+  return manageBtn + `<div class="doc-grid">${docs.map(d => { const fl = docLink(d); return `<div class="doc"><b>${esc(d.title)}</b>${d.driveFile?'<span class="pill green" style="margin-left:6px">● live</span>':''}<span>${esc(d.type)} · ${esc(d.stage)}<br>Owner: ${esc(d.owner)} · Date: ${esc(d.date)}</span><div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><a class="download-btn" href="${esc(fl)}" target="_blank">Open</a><a class="download-btn primary" href="${esc(fl)}" download>Download</a></div></div>`; }).join('')}</div>`;
 }
 
 function costCards(p) {
@@ -1050,9 +1077,19 @@ function openArchivedProject(id) {
   const gallery = ph.length
     ? `<div class="overview-gallery">${ph.map(u => `<img class="overview-img" src="${esc(u)}" alt="${esc(x.name)}" onclick="window.open('${esc(u)}','_blank')">`).join('')}</div>`
     : '';
+  /* Real site-photo folders (Before / During / After) — link out to the
+     private Drive folders so the actual photos can be opened. */
+  const spf = (typeof SITE_PHOTO_FOLDERS !== 'undefined' && SITE_PHOTO_FOLDERS[id]) || {};
+  const spfKeys = Object.keys(spf);
+  const photoBlock = spfKeys.length
+    ? `<div style="margin-top:14px"><h4 style="margin:0 0 8px;font-size:13px;color:#0a0a0a">Site Photos — Before / During / After</h4>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">${spfKeys.map(k =>
+          `<a class="download-btn" style="padding:10px 14px;font-weight:800" href="${esc(spf[k])}" target="_blank">${esc(k)} photos →</a>`).join('')}
+        </div></div>`
+    : '';
   const docLinks = (x.docs || []).map(f => `<a class="download-btn" href="${esc(f)}" target="_blank">Open</a><a class="download-btn primary" href="${esc(f)}" download>Download</a>`).join(' ');
   /* real documents from the register for this completed project */
-  const regDocs = DOCUMENTS.filter(d => d.projectId === x.id);
+  const regDocs = (typeof effectiveDocs === 'function' ? effectiveDocs() : DOCUMENTS).filter(d => d.projectId === x.id);
   const regRows = regDocs.map(d => {
     const fl = docLink(d);
     return `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 0;border-bottom:1px dashed var(--line)">
@@ -1061,6 +1098,19 @@ function openArchivedProject(id) {
     </div>`;
   }).join('');
   const regBlock = regRows ? `<div style="margin-top:12px"><h4 style="margin:0 0 6px;font-size:13px;color:#0a0a0a">Registered documents</h4>${regRows}</div>` : '';
+  /* payment position for a completed project (from the Payments tab) */
+  const cx = COST_DATA[x.id] || {};
+  const cxOut = Math.max(0, (cx.certified||0) - (cx.paid||0));
+  const paymentBlock = (cx.certified || cx.paid) ? `
+    <div class="callout" style="margin-top:14px;background:#fff;border:1px solid var(--line);color:#0a0a0a">
+      <b style="display:block;margin-bottom:6px">Payment position</b>
+      <div style="display:flex;flex-wrap:wrap;gap:18px">
+        <span>Certified <b>${money(cx.certified||0)}</b></span>
+        <span>Paid <b>${money(cx.paid||0)}</b></span>
+        <span>Outstanding <b style="color:${cxOut?'#dc2626':'#16a34a'}">${money(cxOut)}</b></span>
+        <span>Retention <b>${money(cx.retention||0)}</b></span>
+      </div>
+    </div>` : '';
   $('drawerBadges').innerHTML = `<span class="pill green">Completed</span>${x.year ? `<span class="pill grey">${x.year}</span>` : ''}`;
   $('drawerTitle').textContent = x.name;
   $('drawerSub').textContent = `${x.id} · ${x.client} · ${x.location || ''}`;
@@ -1076,6 +1126,7 @@ function openArchivedProject(id) {
         <div class="dk"><span>Year</span><b>${esc(x.year || '—')}</b></div>
       </div>
       ${gallery}
+      ${photoBlock}
       <div class="info-grid" style="margin-top:12px">
         <div class="info"><b>Client</b>${esc(x.client)}</div>
         <div class="info"><b>Sector</b>${esc(x.sector || '—')}</div>
@@ -1085,9 +1136,11 @@ function openArchivedProject(id) {
         <div class="info"><b>Status</b><span class="pill green">Completed</span></div>
       </div>
       <div class="callout" style="margin-top:12px"><b>Summary:</b> ${esc(x.summary || 'Completed project.')}</div>
+      ${paymentBlock}
     </section>
     <section class="tab-panel" data-panel="docs">
       <div class="empty" style="margin-bottom:10px">Completed project documents.</div>
+      ${canManageDocs() ? `<div style="margin-bottom:12px"><button class="upd-btn" onclick="document.getElementById('qaSlotArch').innerHTML=quickAddForm('${esc(x.id)}','${esc(x.name)}','${esc(x.client)}')">+ Add folder / file</button><div id="qaSlotArch"></div></div>` : ''}
       ${docLinks ? `<div style="display:flex;gap:8px;flex-wrap:wrap">${docLinks}</div>` : ''}
       ${regBlock}
     </section>`;
@@ -1122,22 +1175,80 @@ function bindCC() {
 }
 
 /* ---------- module tables (Progress / Payments / Risks / Site Photos) ---------- */
+function renderScheduleVisuals(){
+  /* KPI cards — portfolio-level schedule health at a glance */
+  const k = $('scheduleKpis');
+  if (k) {
+    const sumP = PROJECTS.reduce((a,p)=>a+(p.planned||0),0);
+    const sumA = PROJECTS.reduce((a,p)=>a+(p.actual||0),0);
+    const spi = sumP ? sumA/sumP : 0;
+    const avgVar = PROJECTS.length ? Math.round((sumA-sumP)/PROJECTS.length) : 0;
+    const onTrack = PROJECTS.filter(p=>p.status==='Green').length;
+    const watch = PROJECTS.filter(p=>p.status==='Amber').length;
+    const behind = PROJECTS.filter(p=>p.status==='Red').length;
+    k.innerHTML = [
+      ['Portfolio SPI', spi, 'float2'],
+      ['On Track', onTrack, 'int'],
+      ['Watch', watch, 'int'],
+      ['Behind', behind, 'int']
+    ].map(([lab,v,kind]) => `<div class="metric-card"><span>${lab}</span><b data-target="${v}" data-kind="${kind}">0</b></div>`).join('') +
+      `<div class="metric-card"><span>Avg Variance</span><b style="color:${avgVar<0?'#dc2626':'#0a0a0a'}">${avgVar>0?'+':''}${avgVar}%</b></div>`;
+    k.querySelectorAll('b[data-target]').forEach(runCounter);
+    staggerChildren(k,55,7);
+  }
+  /* Bar chart — actual vs planned per project, worst first. Left of the
+     planned outline = behind; right of it = ahead. Hover for details. */
+  const c = $('scheduleChart'); if (!c) return;
+  const arr = PROJECTS.slice().sort((a,b)=>(a.actual-a.planned)-(b.actual-b.planned));
+  const w=760, mL=210, mR=40, mT=16, rowH=40, barH=14;
+  const h = mT + arr.length*rowH + 10;
+  const scale = v => mL + (v/100)*(w-mL-mR);
+  let grid = '';
+  for (let v=0; v<=100; v+=25){
+    const x = scale(v);
+    grid += `<line x1="${x}" y1="${mT-12}" x2="${x}" y2="${h}" stroke="#e8e8e8"/><text x="${x-6}" y="${mT-16}" font-size="10" fill="#555">${v}%</text>`;
+  }
+  const rows = arr.map((p,i)=>{
+    const y = mT + i*rowH;
+    const varAmt = (p.actual||0)-(p.planned||0);
+    const behind = varAmt < -5;
+    const fill = behind ? '#dc2626' : '#0a0a0a';
+    return `<text x="0" y="${y+22}" font-size="11" fill="#111" font-weight="600"><title>${esc(p.name)}</title>${esc(p.name.length>26? p.name.slice(0,25)+'…':p.name)}</text>` +
+      `<rect x="${mL}" y="${y+5}" width="${Math.max(1, scale(p.planned)-mL)}" height="${barH}" rx="3" fill="none" stroke="#0a0a0a" stroke-width="1.2"><title>${esc(p.name)} planned ${p.planned}%</title></rect>` +
+      `<rect x="${mL}" y="${y+5}" width="${Math.max(1, scale(p.actual)-mL)}" height="${barH}" rx="3" fill="${fill}"><title>${esc(p.name)} actual ${p.actual}% (planned ${p.planned}%)</title></rect>` +
+      `<text x="${Math.min(w-mR+6, scale(Math.max(p.actual,p.planned))+8)}" y="${y+18}" font-size="10" fill="${behind?'#dc2626':'#0a0a0a'}" font-weight="700">${varAmt>0?'+':''}${varAmt}%</text>`;
+  }).join('');
+  c.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px">
+      <b style="font-size:13px">Actual vs Planned progress</b>
+      <div style="display:flex;gap:14px;font-size:11px;color:#0a0a0a">
+        <span><span style="display:inline-block;width:14px;height:9px;background:#0a0a0a;border-radius:2px;vertical-align:middle"></span> Actual (ahead/on-track)</span>
+        <span><span style="display:inline-block;width:14px;height:9px;border:1.2px solid #0a0a0a;border-radius:2px;vertical-align:middle"></span> Planned</span>
+        <span><span style="display:inline-block;width:14px;height:9px;background:#dc2626;border-radius:2px;vertical-align:middle"></span> Behind</span>
+      </div>
+    </div>
+    <svg viewBox="0 0 ${w} ${h}" style="width:100%;height:auto">${grid}${rows}</svg>
+    <div style="margin-top:6px;font-size:11px;color:#0a0a0a">Left of the planned outline = behind schedule · Right = ahead. Hover a bar for details. Worst-performing projects shown first.</div>`;
+  c.querySelectorAll('rect').forEach((r,i)=>{ r.classList.add('bar-grow'); r.style.animationDelay=(35*i)+'ms'; });
+}
+
 function renderScheduleTable() {
   const el = $('scheduleTable'); if (!el) return;
+  renderScheduleVisuals();
   const rows = PROJECTS.map(p => {
     const variance = p.actual - p.planned;
     const spi = p.planned > 0 ? (p.actual / p.planned).toFixed(2) : '—';
     const statusCls = variance < -15 ? 'red' : variance < -5 ? 'amber' : 'green';
     const statusLabel = variance < -15 ? 'Red' : variance < -5 ? 'Amber' : 'Green';
-    return `<tr onclick="openProject('${p.id}')"><td><b>${esc(p.name)}</b><br><span style="color:#64748b">${esc(p.id)}</span></td><td>${p.planned}%</td><td>${p.actual}%</td><td>${variance > 0 ? '+' : ''}${variance}%</td><td>${spi}</td><td>${esc(p.forecast)}</td><td><span class="pill ${statusCls}">${statusLabel}</span></td></tr>`;
+    const track = `<div class="track" style="min-width:110px"><div class="fill ${statusCls}" style="width:${Math.min(100,p.actual)}%"></div><span class="mark" style="left:${Math.min(100,p.planned)}%"></span></div>`;
+    return `<tr onclick="openProject('${p.id}')"><td><b>${esc(p.name)}</b><br><span style="color:#64748b">${esc(p.id)}</span></td><td>${p.planned}%</td><td>${p.actual}%</td><td>${track}</td><td>${variance > 0 ? '+' : ''}${variance}%</td><td>${spi}</td><td>${esc(p.forecast)}</td><td><span class="pill ${statusCls}">${statusLabel}</span></td></tr>`;
   }).join('');
-  el.innerHTML = `<table class="file-table"><thead><tr><th>Project</th><th>Planned %</th><th>Actual %</th><th>Variance</th><th>SPI</th><th>Forecast Completion</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table>`;
+  el.innerHTML = `<table class="file-table"><thead><tr><th>Project</th><th>Planned %</th><th>Actual %</th><th>Progress</th><th>Variance</th><th>SPI</th><th>Forecast Completion</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table>`;
   staggerRows(el);
 }
 
 function renderCostMetrics() {
   const el = $('costMetrics'); if (!el) return;
-  const t = PROJECTS.reduce((a, p) => {
+  const t = allCostProjects().reduce((a, p) => {
     const c = costInfo(p);
     a.value += p.contractValue; a.certified += c.certified; a.paid += c.paid; a.outstanding += c.outstanding; a.retention += c.retention;
     return a;
@@ -1148,11 +1259,19 @@ function renderCostMetrics() {
   staggerChildren(el, 60, 6);
 }
 
+/* All projects with a payment position — ACTIVE and ARCHIVED — so completed
+   jobs (e.g. Eko Boys Fence) are included in the payments view too. */
+function allCostProjects() {
+  const archived = (typeof ARCHIVE !== 'undefined' ? ARCHIVE : []).concat(typeof ZCC !== 'undefined' && ZCC.archive ? ZCC.archive() : []);
+  return PROJECTS.concat(archived);
+}
+
 function renderCostTable() {
   const el = $('costTable'); if (!el) return;
-  const rows = PROJECTS.map(p => {
+  const rows = allCostProjects().map(p => {
     const c = costInfo(p);
-    return `<tr onclick="openProject('${p.id}')"><td><b>${esc(p.name)}</b><br><span style="color:#64748b">${esc(p.id)}</span></td><td>${money(p.contractValue)}</td><td>${money(c.certified)}</td><td>${money(c.paid)}</td><td>${money(c.outstanding)}</td><td>${money(c.retention)}</td><td>${c.variation ? money(c.variation) + ' pending' : '₦0'}</td></tr>`;
+    const open = p.completed ? `openArchivedProject('${p.id}')` : `openProject('${p.id}')`;
+    return `<tr onclick="${open}"><td><b>${esc(p.name)}</b><br><span style="color:#64748b">${esc(p.id)}${p.completed ? ' · Completed' : ''}</span></td><td>${money(p.contractValue)}</td><td>${money(c.certified)}</td><td>${money(c.paid)}</td><td>${money(c.outstanding)}</td><td>${money(c.retention)}</td><td>${c.variation ? money(c.variation) + ' pending' : '₦0'}</td></tr>`;
   }).join('');
   el.innerHTML = `<table class="file-table"><thead><tr><th>Project</th><th>Contract Value</th><th>Certified</th><th>Paid</th><th>Outstanding</th><th>Retention</th><th>Variations</th></tr></thead><tbody>${rows}</tbody></table>`;
   staggerRows(el);
@@ -1796,6 +1915,7 @@ function updPayment(){
   c[kind] = (c[kind] || 0) + amt;
   recalcCost(PROJECTS.find(p => p.id === pid));
   ZCC.snapshot(); ZCC.logAudit(whoami(), 'PAYMENT_UPDATE', `${pid} ${labels[kind]} +${money(amt)} ${note}`.trim());
+  if (typeof sheetWriteSafe === 'function') sheetWriteSafe({ action:'setPayment', projectId: pid, certified: c.certified, paid: c.paid, retention: c.retention }, 'payment update');
   if (err) err.innerHTML = `<span style="color:#16a34a">✔ Recorded — ${labels[kind]} +${money(amt)} for ${pid}. Outstanding recomputed.</span>`;
   toast('Payment recorded: ' + pid + ' ' + labels[kind] + ' +' + money(amt));
   renderAccountsDash();
@@ -2490,9 +2610,21 @@ function archiveFromPortal(){
 }
 
 /* Move a completed project (and its documents) into the archive */
-function archiveProject(id){
+async function archiveProject(id){
   const p = PROJECTS.find(x => x.id === id); if (!p) return;
-  if (!confirm(`Archive "${p.name}"?\n\nThis moves the completed project out of the active portfolio into the Archive, where its documents remain retrievable.`)) return;
+  if (!confirm(`Archive "${p.name}"?\n\nThis marks it Completed and moves it out of the active portfolio into the Archive.`)) return;
+  /* if a web app is configured, update the Google Sheet first so the
+     change is shared (not just local) */
+  if (typeof WRITE_BACK !== 'undefined' && WRITE_BACK) {
+    try {
+      toast('Updating sheet…', 'info');
+      await sheetWrite({ action: 'setProjectStatus', projectId: id, status: 'Completed', completed: todayStr() });
+      toast('Sheet updated: ' + p.name + ' → Completed');
+    } catch (e) {
+      toast('Sheet update failed: ' + (e && e.message ? e.message : e), 'error');
+      return;
+    }
+  }
   const rec = {
     id: p.id, name: p.name, client: p.client, sector: p.sector, location: p.location,
     company: p.company || '', pm: p.pm, contractValue: p.contractValue,
@@ -2859,7 +2991,7 @@ function renderCompanyPage() {
      for an all-completed company (no meaningless 0s / empty health cards). */
   const hasActive = projs.length > 0;
   [['companyKpis', hasActive], ['companyExec', hasActive], ['companyProjects', hasActive],
-   ['companyAttention', hasActive]].forEach(([id, show]) => {
+   ['companyAttention', hasActive], ['companyCompletedSection', archived.length > 0]].forEach(([id, show]) => {
     const el = $(id); if (el) el.style.display = show ? '' : 'none';
   });
 
@@ -2955,8 +3087,10 @@ function renderCompanyPage() {
     staggerChildren(att, 60, 8);
   }
 
-  /* recent documents — scoped to this company's project ids */
-  const ids = new Set(projs.map(p => p.id));
+  /* recent documents — scoped to this company's project ids, INCLUDING
+     completed (archived) projects so a completed job like Eko Boys Fence
+     still shows its award letters etc. here. */
+  const ids = new Set([...projs.map(p => p.id), ...archived.map(a => a.id)]);
   const du = $('docUploads');
   if (du) {
     const rows = DOCUMENTS.filter(d => ids.has(d.projectId)).slice().sort((a,b) => String(b.uploadedAt||b.date).localeCompare(String(a.uploadedAt||a.date))).map(d => {
@@ -3044,12 +3178,15 @@ function boot() {
   if (typeof loadZonexaSheet === 'function') {
     loadZonexaSheet().then(() => {
       if ($('companyStrip') || document.getElementById('companyGrid')) renderCompanyFolders();
-      if (page === 'dashboard') { renderKpis(); renderAttention(); renderExecutiveSummary(); renderEscalationCount(); renderNotificationBell(); }
+      if (page === 'dashboard') { renderKpis(); renderNotificationBell(); }
       if (page === 'projects') renderProjects();
       if (page === 'archive') renderArchive();
       if (page === 'company') renderCompanyPage();
       if (page === 'documents') { renderFileTable(); renderDocRegister(); }
       if (page === 'doc-manage') renderDocManage();
+      if (page === 'sop') renderSOPCompliance();
+      if (page === 'payments') { renderCostMetrics(); renderCostTable(); }
+      if (page === 'accounts-dash') renderAccountsDash();
     });
   }
 
@@ -3064,11 +3201,9 @@ function boot() {
   switch (page) {
     /* ---- Command Center ---- */
     case 'dashboard':
-      renderKpis(); populate(); renderCompanyFolders(); renderAttention(); bindCC();
+      renderKpis(); populate(); renderCompanyFolders(); bindCC();
       renderDocUploads();
       renderCloseArchive();
-      renderExecutiveSummary();
-      renderEscalationCount();
       renderNotificationBell();
       if (user.role === 'MD') { const a = $('approvals'); if (a) a.style.display = 'block'; renderApprovalsInbox(); }
       break;
@@ -3086,8 +3221,6 @@ function boot() {
       renderCostMetrics(); renderCostTable(); bindCC(); break;
     case 'sitephotos':
       renderSitePhotosTable(); bindCC(); break;
-    case 'analytics':
-      renderAnalytics(); bindCC(); break;
     case 'admin':
       renderAdmin(); break;
     case 'sop':
@@ -3109,8 +3242,6 @@ function boot() {
       renderReport(); break;
     case 'archive':
       renderArchive(); bindCC(); break;
-    case 'constr-analytics':
-      renderConstrAnalytics(); bindCC(); break;
     case 'company':
       renderCompanyPage(); bindCC(); break;
     /* ---- Staff Workspace ---- */
